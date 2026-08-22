@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://problematicteam.no-ip.eu/sitemap.xml
