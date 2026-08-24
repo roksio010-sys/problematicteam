@@ -62,12 +62,19 @@ p{margin:0;max-width:56ch;text-wrap:pretty}
 
 /* ---------- шапка ---------- */
 .head{
-  position:fixed;inset:0 0 auto 0;z-index:800;height:var(--header-h);
+  position:fixed;inset:0 0 auto 0;z-index:800;
+  height:calc(var(--header-h) + env(safe-area-inset-top,0px));
+  padding-top:env(safe-area-inset-top,0px);
   display:flex;align-items:center;justify-content:space-between;
   padding-inline:var(--pad);
   transition:background 600ms var(--ease),backdrop-filter 600ms var(--ease);
 }
-.head.is-stuck{background:rgba(12,6,22,.72);backdrop-filter:blur(18px)}
+.head.is-stuck{background:rgba(12,6,22,.86);backdrop-filter:blur(18px)}
+@media (max-width:1080px){
+  /* на телефоне подложка есть всегда — текст страницы не просвечивает сквозь шапку */
+  .head{background:rgba(12,6,22,.92);backdrop-filter:blur(18px);
+    box-shadow:0 1px 0 0 rgba(245,241,251,.08)}
+}
 .mark{display:flex;align-items:center;gap:12px;color:var(--accent);min-height:44px}
 .logo{width:auto;height:26px;image-rendering:pixelated;
   filter:drop-shadow(0 0 14px rgba(173,0,252,.5))}
