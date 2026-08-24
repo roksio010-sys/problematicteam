@@ -485,9 +485,14 @@ function mountMotion() {
   const head = document.querySelector('[data-head]');
   if (!head) return;
   const hero = document.querySelector('.hero');
-  const limit = () => hero
-    ? hero.getBoundingClientRect().height - head.getBoundingClientRect().height
-    : 40;
+  const compact = () => window.matchMedia('(max-width:1080px)').matches;
+  const limit = () => {
+    /* на телефоне подложка нужна сразу при прокрутке — иначе текст просвечивает сквозь шапку */
+    if (compact()) return 12;
+    return hero
+      ? hero.getBoundingClientRect().height - head.getBoundingClientRect().height
+      : 40;
+  };
   let max = limit();
   const onScroll = () => head.classList.toggle('is-stuck', window.scrollY > max);
   const onResize = () => { max = limit(); onScroll(); };

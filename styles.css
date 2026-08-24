@@ -17,12 +17,14 @@
   --gap:clamp(24px,3vw,44px);
   --rule:rgba(245,241,251,.12);
   --header-h:84px;
+  --safe-top:env(safe-area-inset-top,0px);
+  --head-total:calc(var(--header-h) + var(--safe-top)); /* реальная высота шапки */
 }
 
 *,*::before,*::after{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:var(--header-h)}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:calc(var(--head-total) + 8px)}
 html.is-locked,html.is-locked body{overflow:hidden}
-section[id]{scroll-margin-top:calc(var(--header-h) + 8px)}
+section[id]{scroll-margin-top:calc(var(--head-total) + 8px)}
 body{
   margin:0;background:var(--bg);color:var(--ink);
   font-family:'Onest',system-ui,sans-serif;font-weight:400;
@@ -63,18 +65,23 @@ p{margin:0;max-width:56ch;text-wrap:pretty}
 /* ---------- шапка ---------- */
 .head{
   position:fixed;inset:0 0 auto 0;z-index:800;
-  height:calc(var(--header-h) + env(safe-area-inset-top,0px));
-  padding-top:env(safe-area-inset-top,0px);
+  height:var(--head-total);
+  padding-top:var(--safe-top);
   display:flex;align-items:center;justify-content:space-between;
   padding-inline:var(--pad);
   transition:background 600ms var(--ease),backdrop-filter 600ms var(--ease);
 }
-.head.is-stuck{background:rgba(12,6,22,.86);backdrop-filter:blur(18px)}
-@media (max-width:1080px){
-  /* на телефоне подложка есть всегда — текст страницы не просвечивает сквозь шапку */
-  .head{background:rgba(12,6,22,.92);backdrop-filter:blur(18px);
-    box-shadow:0 1px 0 0 rgba(245,241,251,.08)}
+.head > *{position:relative;z-index:1}
+/* подложка — отдельный слой: перекрывает и зону notch, появляется только при прокрутке */
+.head::before{
+  content:'';position:absolute;left:0;right:0;top:calc(-1 * var(--safe-top) - 1px);bottom:0;
+  background:rgba(12,6,22,.86);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  box-shadow:0 1px 0 0 rgba(245,241,251,.08);
+  opacity:0;pointer-events:none;
+  transition:opacity 600ms var(--ease);
 }
+.head.is-stuck::before{opacity:1}
 .mark{display:flex;align-items:center;gap:12px;color:var(--accent);min-height:44px}
 .logo{width:auto;height:26px;image-rendering:pixelated;
   filter:drop-shadow(0 0 14px rgba(173,0,252,.5))}
@@ -146,7 +153,7 @@ p{margin:0;max-width:56ch;text-wrap:pretty}
 }
 .hero__text{
   display:flex;flex-direction:column;justify-content:center;gap:clamp(20px,2.4vw,32px);
-  padding:calc(var(--header-h) + 4vh) clamp(24px,4vw,64px) 9vh var(--pad);
+  padding:calc(var(--head-total) + 4vh) clamp(24px,4vw,64px) 9vh var(--pad);
 }
 .hero h1{max-width:14ch}
 .hero__wall{
@@ -217,7 +224,7 @@ p{margin:0;max-width:56ch;text-wrap:pretty}
 .pj__media img{width:100%;height:100%;object-fit:contain;object-position:center;background:var(--bg)}
 .pj__side{
   display:flex;flex-direction:column;gap:clamp(24px,3vw,40px);
-  padding:calc(var(--header-h) + 5vh) var(--pad) clamp(56px,8vh,110px) clamp(28px,4vw,64px);
+  padding:calc(var(--head-total) + 5vh) var(--pad) clamp(56px,8vh,110px) clamp(28px,4vw,64px);
 }
 .pj__side h1{font-size:clamp(2.2rem,4.6vw,5rem)}
 .metagrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(18px,2.4vw,32px);
@@ -271,7 +278,7 @@ p{margin:0;max-width:56ch;text-wrap:pretty}
 .player__soon{position:relative;z-index:2;display:flex;flex-direction:column;gap:14px;align-items:center}
 
 /* ---------- страница серии ---------- */
-.watch{padding-top:calc(var(--header-h) + 5vh)}
+.watch{padding-top:calc(var(--head-total) + 5vh)}
 .watch__top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);gap:var(--gap);
   align-items:start;padding-bottom:clamp(24px,4vh,44px)}
 .watch__head{display:flex;flex-direction:column;gap:10px;min-width:0}
@@ -352,7 +359,7 @@ html.is-rush .rise{--d:0ms!important;transition-duration:120ms!important}
 .mt-m{margin-top:32px}
 .mt-l{margin-top:clamp(34px,5vh,64px)}
 .mt-xl{margin-top:clamp(40px,6vh,80px)}
-.section--page{padding-top:calc(var(--header-h) + 9vh)}
+.section--page{padding-top:calc(var(--head-total) + 9vh)}
 .section--tight{padding-top:0}
 .h1--watch{font-size:clamp(1.8rem,3.4vw,3.6rem);line-height:.95}
 .foot__note{max-width:38ch}
