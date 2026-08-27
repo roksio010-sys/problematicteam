@@ -28,12 +28,24 @@ const metaFirst = (p) => (p.meta && p.meta[0] ? T(p.meta[0][1]) : T(p.kind));
 const isParts = (p) => /Комикс|Комікс/i.test(String(p.kind || ''));
 const unitOne = (p) => (isParts(p) ? U('onePart') : U('oneEpisode'));
 const unitMany = (p) => (isParts(p) ? U('partsLabel') : U('episodesLabel'));
-/* «3 / серии», «2 / части», ничего если пусто */
+/* склонение: 1 серия / 2 серии / 5 серий, 1 часть / 2 части / 5 частей */
+const PLURALS = {
+  ru: { ep: ['серия', 'серии', 'серий'],   part: ['часть', 'части', 'частей'] },
+  ua: { ep: ['серія', 'серії', 'серій'],   part: ['частина', 'частини', 'частин'] }
+};
+function pluralForm(n) {
+  const n10 = n % 10, n100 = n % 100;
+  if (n10 === 1 && n100 !== 11) return 0;
+  if (n10 >= 2 && n10 <= 4 && (n100 < 12 || n100 > 14)) return 1;
+  return 2;
+}
+/* «1 серия», «2 серии», «5 серий», ничего если пусто */
 function countLabel(p) {
   const n = p.episodes.length;
   if (!n) return '';
-  if (n === 1) return unitOne(p);
-  return n + ' / ' + unitMany(p).toLowerCase();
+  const table = PLURALS[LANG] || PLURALS.ru;
+  const forms = isParts(p) ? table.part : table.ep;
+  return n + '\u00A0' + forms[pluralForm(n)];
 }
 /* имя участника с учётом языка */
 const nameOf = (m) => (LANG === 'ua' && typeof NAMES_UA !== 'undefined' && NAMES_UA[m.name]) || m.name;
