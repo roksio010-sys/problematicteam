@@ -290,7 +290,10 @@ function epRow(p, ep) {
         <h3 class="ep__title">${t || T(ep.n)}</h3>
         ${btn(U('openSeparately'), `watch.html?p=${p.id}&e=${idx + 1}`, 'bare')}
       </div>
-      <div class="ep__stage">${playerMarkup(ep)}</div>
+      <div class="ep__stage">
+        ${playerMarkup(ep)}
+        ${ep.note ? `<p class="ep__note">${T(ep.note)}</p>` : ''}
+      </div>
     </article>`;
 }
 
@@ -422,6 +425,7 @@ function mountWatch() {
         <p class="lead rise" data-d="900">${T(p.lead)}</p>
       </div>
       <div class="watch__stage rise" data-d="1000">${playerMarkup(ep)}</div>
+      ${ep.note ? `<p class="ep__note ep__note--watch rise" data-d="1050">${T(ep.note)}</p>` : ''}
       <div class="credits">
         ${Object.entries(credits || {}).map(([k, rows], i) => `
           <div class="credits__col rise" data-d="${i * 50}">

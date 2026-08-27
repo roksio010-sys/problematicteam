@@ -412,3 +412,14 @@ html.is-rush .rise{--d:0ms!important;transition-duration:120ms!important}
 .seasonbox{display:none}
 .seasonbox.is-on{display:block}
 .ep--trailer{border-top:1px solid var(--rule)}
+
+
+/* ---------- подпись под плеером (озвучка и пр.) ---------- */
+.ep__note{
+  margin-top:10px;font-size:12px;line-height:1.7;
+  text-transform:uppercase;letter-spacing:.16em;
+  color:rgba(245,241,251,.52);font-weight:300;
+}
+.ep__note::before{content:'— ';color:var(--accent)}
+.ep__note--watch{margin-top:14px;text-align:right}
+@media (max-width:760px){ .ep__note--watch{text-align:left} }

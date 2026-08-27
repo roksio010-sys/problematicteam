@@ -621,7 +621,7 @@ function P(o) {
   return p;
 }
 /* короткий эпизод: E('1 серия', 'НАЗВАНИЕ', 'kinescopeId') */
-const E = (n, title, kinescope) => ({ n, title, kinescope });
+const E = (n, title, kinescope, note) => ({ n, title, kinescope, note });
 
 /* ---------- русский каталог: всё из списка ---------- */
 const EXTRA_RU = [
@@ -729,14 +729,15 @@ const EXTRA_RU = [
     lead: 'Дубляж серий оригинального «Удивительного мира Гамбола» от&nbsp;команды PMT.',
     tagline: 'Классика<br>в озвучке<br>PMT',
     poster: POSTER.gumball,
-    meta: [['Жанр', 'Ситком, комедия'], ['Озвучка', 'Problematic Team'], ['Серий', '6'], ['Песни', '1']],
+    meta: [['Жанр', 'Ситком, комедия'], ['Озвучка', 'Problematic Team'], ['Серий', '7'], ['Песни', '1']],
     episodes: [
       E('Серия', 'ПИКНИК', 'nfyeraKBS5rQKHr8BoTgL4'),
       E('Серия', 'УНИВЕРСАЛЬНЫЙ ПУЛЬТ · ЧАСТИ 1 И 2', '721PCP8rjFUUr3nfdipFjt'),
       E('Серия', 'НЕЛОВКОСТЬ', 'tNb5ebWsYZz7eEGAt4Q6VQ'),
       E('Серия', 'ПРОСТАК', '2CXfpfScKLuVvEmKQAUeBA'),
       E('Серия', 'ГАМБОЛ, ДАРВИН И РИЧАРД', 'mdRavrjZCx44L6hbTqDk94'),
-      E('Серия', 'МАРТЫШКИН ТРУД', '0zifeL6e4kV9hise417guF'),
+      E('Серия', 'МАРТЫШКИН ТРУД', '0zifeL6e4kV9hise417guF', 'Озвучка: Мисс Симиан'),
+      E('Серия', 'КТО ГЛАВНЫЙ?', 'krZwK7gnccNdtXRHCpNaJ4', 'Озвучка: Бабушка Джо Джо'),
       E('Песня', 'НЕ ПОХОЖИЙ НА МЕНЯ', '0WGSdrQLvGjg9AeWY8SaQz')
     ]
   }),
