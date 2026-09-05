@@ -7,7 +7,7 @@ const LANGS = { ru: 'Русский', ua: 'Українська' };
 const LS_KEY = 'pmt-lang';
 
 function getLang() {
-  const v = localStorage.getItem(LS_KEY);
+  const v = PMT.getLang();
   return (v === 'ru' || v === 'ua') ? v : null;
 }
 let LANG = getLang() || 'ru';
@@ -59,7 +59,7 @@ function pairedId(id, toLang) {
 }
 
 function setLang(lang, reload = true, keepPage = false) {
-  localStorage.setItem(LS_KEY, lang);
+  PMT.saveLang(lang);
   if (!reload) return;
   if (keepPage) { location.reload(); return; }
   /* на странице проекта/серии: тот же проект на другом языке,
@@ -249,6 +249,12 @@ function closeModal() {
 
 /* ---------- встроенный плеер (страница серии) ---------- */
 function playerMarkup(ep) {
+  if (ep.mp4 || ep.hls) {
+    const mp4 = PMT.safeMedia(ep.mp4), hls = PMT.safeMedia(ep.hls);
+    if (mp4 || hls) return '<div class="player"><video controls preload="none" playsinline webkit-playsinline poster="' + PMT.escape(ep.poster || '') + '" style="position:absolute;left:0;top:0;width:100%;height:100%">' +
+      (mp4 ? '<source src="' + PMT.escape(mp4) + '" type="video/mp4">' : '') +
+      (hls ? '<source src="' + PMT.escape(hls) + '" type="application/vnd.apple.mpegurl">' : '') + '</video></div>';
+  }
   const title = plain(T(ep.title));
   if (!ep.kinescope) {
     return `<div class="player player--empty">
@@ -517,7 +523,7 @@ function mountMotion() {
   window.addEventListener('resize', onResize);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function bootModern() {
   mountLangGate();
   mountChrome();
   mountStatic();
@@ -529,4 +535,6 @@ document.addEventListener('DOMContentLoaded', () => {
   mountSmoothScroll();
   mountScrollSpeed();
   mountMotion();
-});
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootModern);
+else bootModern();
