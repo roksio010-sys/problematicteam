@@ -189,18 +189,24 @@ function playerMarkup(ep) {
   var title = PMT.escape(plain(T(ep.title)));
   var poster = PMT.escape(PMT.legacy && ep.posterLegacy || ep.poster || "assets/compat/placeholder.png");
   var mp4 = PMT.safeMedia(ep.mp4), hls = PMT.safeMedia(ep.hls);
+  var note = PMT.legacy ? '<div class="player__help"><p>' +
+    (LANG === "ua" ? "Ваш браузер застарів відео може не запускатися." : "Ваш браузер устарел видео может не запускаться.") +
+    '</p></div>' : '';
   if (mp4 || hls) {
-    return '<div class="player player--native"><video controls preload="none" poster="' + poster + '" playsinline webkit-playsinline>' + (mp4 ? '<source src="' + PMT.escape(mp4) + '" type="video/mp4">' : "") + (hls ? '<source src="' + PMT.escape(hls) + '" type="application/vnd.apple.mpegurl">' : "") + '</video></div><p class="player__help"><a href="' + PMT.escape(mp4 || hls) + '">' + (LANG === "ua" ? "Відкрити відеофайл" : "Открыть видеофайл") + "</a></p>";
+    return '<div class="player player--native"><video controls preload="none" poster="' + poster + '" playsinline webkit-playsinline>' +
+      (mp4 ? '<source src="' + PMT.escape(mp4) + '" type="video/mp4">' : '') +
+      (hls ? '<source src="' + PMT.escape(hls) + '" type="application/vnd.apple.mpegurl">' : '') +
+      '</video></div>' + note;
   }
   if (!ep.kinescope) {
-    return '<div class="player player--empty"><img src="' + poster + '" alt=""><div class="player__soon"><span class="label">' + (ep.fallback ? U("playerMoved") : U("inProduction")) + "</span>" + (ep.fallback ? btn(U("oldPlayer"), PMT.escape(ep.fallback), "line", 'target="_blank" rel="noopener noreferrer"') : "") + "</div></div>";
+    return '<div class="player player--empty"><img src="' + poster + '" alt=""><div class="player__soon"><span class="label">' +
+      (ep.fallback ? U("playerMoved") : U("inProduction")) + '</span></div></div>' + (ep.fallback ? note : '');
   }
-  var note = "";
-  if (PMT.legacy) {
-    note = '<div class="player__help"><p>' + (LANG === "ua" ? "Зовнішній плеєр може не підтримувати цей браузер. Якщо він не запускається, потрібне пряме MP4/HLS-посилання від власника сайту." : "Внешний плеер может не поддерживать этот браузер. Если он не запускается, нужна прямая MP4/HLS-ссылка от владельца сайта.") + '</p><a target="_blank" rel="noopener noreferrer" href="https://kinescope.io/' + encodeURIComponent(ep.kinescope) + '">' + (LANG === "ua" ? "Відкрити Kinescope окремо" : "Открыть Kinescope отдельно") + "</a>" + (ep.fallback ? ' · <a target="_blank" rel="noopener noreferrer" href="' + PMT.escape(ep.fallback) + '">' + U("oldPlayer") + "</a>" : "") + "</div>";
-  }
-  return '<div class="player-wrap"><div class="player" data-player="' + PMT.escape(ep.kinescope) + '" data-title="' + title + '"><img src="' + poster + '" alt="' + title + '" loading="lazy"><button class="player__btn" type="button" aria-label="' + U("openEpisode") + ": " + title + '"><span class="player__disc">' + PLAY + "</span></button></div>" + note + "</div>";
+  return '<div class="player-wrap"><div class="player" data-player="' + PMT.escape(ep.kinescope) + '" data-title="' + title + '">' +
+    '<img src="' + poster + '" alt="' + title + '" loading="lazy"><button class="player__btn" type="button" aria-label="' +
+    U("openEpisode") + ': ' + title + '"><span class="player__disc">' + PLAY + '</span></button></div>' + note + '</div>';
 }
+
 function wirePlayers(scope) {
   if (!scope) scope = document;
   PMT.each(scope.querySelectorAll("[data-player]"), function(box) {
