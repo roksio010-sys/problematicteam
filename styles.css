@@ -423,3 +423,14 @@ html.is-rush .rise{--d:0ms!important;transition-duration:120ms!important}
 .ep__note::before{content:'— ';color:var(--accent)}
 .ep__note--watch{margin-top:14px;text-align:right}
 @media (max-width:760px){ .ep__note--watch{text-align:left} }
+
+/* Scheduled premiere: top-right badge stays within the cover. */
+.premiere-cover{position:relative;display:block;width:100%;height:100%}
+.premiere-badge{
+  position:absolute;top:12px;right:12px;z-index:3;display:inline-block;
+  padding:7px 11px;border:1px solid rgba(255,255,255,.28);border-radius:4px;
+  background:#AD00FC;color:#fff;font-size:12px;font-weight:400;
+  line-height:1.2;letter-spacing:.08em;text-transform:uppercase;
+  white-space:nowrap;pointer-events:none;box-shadow:0 3px 14px rgba(0,0,0,.4)
+}
+@media(max-width:480px){.premiere-badge{top:8px;right:8px;padding:6px 9px;font-size:11px}}

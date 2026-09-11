@@ -1,3 +1,8 @@
+/* Local visitor dates. The upper boundary is exclusive: all of 19 September is included. */
+var VASYANICH_PREMIERE = {
+  start: [2026, 9, 11],
+  end: [2026, 9, 20]
+};
 var CDN = "https://static.tildacdn.ink/";
 var UI = {
   langTitle: { ru: "Выбери язык", ua: "Обери мову" },
@@ -973,7 +978,8 @@ function normEp(e, fallbackPoster) {
     credits: e.credits || null,
     mp4: e.mp4 || "",
     hls: e.hls || "",
-    posterLegacy: e.posterLegacy || ""
+    posterLegacy: e.posterLegacy || "",
+    promotion: e.promotion || null
   };
 }
 function P(o) {
@@ -1184,6 +1190,7 @@ var EXTRA_RU = [
   }),
   P({
     id: "vasyanich-films",
+    promotion: VASYANICH_PREMIERE,
     kind: "Фильмы",
     title: "ФИЛЬМЫ<br>ВАСЯНИЧА",
     titlePlain: "Фильмы Васянича",
@@ -1194,7 +1201,14 @@ var EXTRA_RU = [
     episodes: [
       E("Фильм", "SPIDER-MAN FAN FILM", "hwtnb33AFjtD81VzHhDx1g"),
       E("Фильм", "СИРЕНОГОЛОВЫЙ · МАЙНКРАФТ ПЕ", "0TKZxGKCJfAVkAu9QSbrbc"),
-      E("Фильм", "", "vnkdvB9bV7TxdjCbQ7MWeE")
+      E("Фильм", "", "vnkdvB9bV7TxdjCbQ7MWeE"),
+      {
+        n: "Фильм",
+        title: "КОМНАТА РАЗУМА",
+        kinescope: "mELox5E8uFTFdvktErLvtT",
+        poster: "assets/posters/komnata-razuma.jpg",
+        promotion: VASYANICH_PREMIERE
+      }
     ]
   })
 ];
@@ -1313,3 +1327,98 @@ var findProject = function(id) {
     return p.id === id;
   });
 };
+
+/* Shared ES5 promotion helpers. Canonical project and episode arrays never change. */
+(function (api) {
+  function boundary(parts) {
+    return new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0).getTime();
+  }
+  function timeOf(now) {
+    return typeof now === "undefined" ? new Date().getTime() : Number(now);
+  }
+  function dates(promotion) {
+    return ' data-premiere-start="' + boundary(promotion.start) + '" data-premiere-end="' + boundary(promotion.end) + '"';
+  }
+  api.promotionActive = function (promotion, now) {
+    var time = timeOf(now);
+    return !!promotion && time >= boundary(promotion.start) && time < boundary(promotion.end);
+  };
+  api.promotionOrder = function (items, now) {
+    var first = [], rest = [], time = timeOf(now);
+    for (var i = 0; i < items.length; i++) {
+      (api.promotionActive(items[i].promotion, time) ? first : rest).push(items[i]);
+    }
+    return first.concat(rest);
+  };
+  api.promotionAttrs = function (item, baseIndex) {
+    return 'data-premiere-base="' + baseIndex + '"' + (item.promotion ? dates(item.promotion) : '');
+  };
+  api.promotionBadge = function (item) {
+    if (!item.promotion) return '';
+    var active = api.promotionActive(item.promotion);
+    return '<span class="premiere-badge" data-premiere-badge' + dates(item.promotion) +
+      ' aria-hidden="' + (active ? 'false' : 'true') + '"' + (active ? '' : ' style="display:none"') +
+      '>Новинка</span>';
+  };
+  api.mountPromotions = function () {
+    if (api._promotionsMounted || !document.querySelector('[data-premiere-badge]')) return;
+    api._promotionsMounted = true;
+    var lists = [], timer = null, lastState = '';
+    api.each(document.querySelectorAll('[data-premiere-list]'), function (list) {
+      var rows = [];
+      api.each(list.children, function (row) {
+        if (row.getAttribute('data-premiere-base') !== null) rows.push(row);
+      });
+      if (rows.length) lists.push({ element: list, rows: rows });
+    });
+    function active(element, now) {
+      var start = element.getAttribute('data-premiere-start');
+      var end = element.getAttribute('data-premiere-end');
+      return start !== null && end !== null && now >= Number(start) && now < Number(end);
+    }
+    function refresh() {
+      if (timer !== null) window.clearTimeout(timer);
+      var now = new Date().getTime();
+      var markers = document.querySelectorAll('[data-premiere-start]');
+      var state = '', delay = 60000;
+      api.each(markers, function (marker) {
+        state += active(marker, now) ? '1' : '0';
+        var start = Number(marker.getAttribute('data-premiere-start'));
+        var end = Number(marker.getAttribute('data-premiere-end'));
+        if (start > now) delay = Math.min(delay, start - now);
+        if (end > now) delay = Math.min(delay, end - now);
+      });
+      if (state !== lastState) {
+        lastState = state;
+        api.each(document.querySelectorAll('[data-premiere-badge]'), function (badge) {
+          var on = active(badge, now);
+          badge.style.display = on ? '' : 'none';
+          badge.setAttribute('aria-hidden', on ? 'false' : 'true');
+        });
+        api.each(lists, function (entry) {
+          var rows = entry.rows.slice(0);
+          rows.sort(function (a, b) {
+            var priority = (active(b, now) ? 1 : 0) - (active(a, now) ? 1 : 0);
+            return priority || Number(a.getAttribute('data-premiere-base')) - Number(b.getAttribute('data-premiere-base'));
+          });
+          api.each(rows, function (row, i) {
+            if (entry.element.children[i] !== row) entry.element.insertBefore(row, entry.element.children[i] || null);
+            var counter = row.querySelector('.prow__num') || row.querySelector('.card__body .num');
+            if (counter) {
+              var number = i + 1 < 10 ? '0' + (i + 1) : String(i + 1);
+              counter.textContent = counter.textContent.replace(/^\d+/, number);
+              var step = api.hasClass(row, 'card') ? 60 : 50;
+              row.setAttribute('data-d', String(i * step));
+              if (row.style.setProperty) row.style.setProperty('--d', i * step + 'ms');
+            }
+          });
+        });
+      }
+      timer = window.setTimeout(refresh, Math.max(1, delay));
+    }
+    refresh();
+    window.addEventListener('focus', refresh, false);
+    window.addEventListener('pageshow', refresh, false);
+    document.addEventListener('visibilitychange', refresh, false);
+  };
+}(PMT));

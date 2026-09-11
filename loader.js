@@ -10,7 +10,7 @@
   }
   function load(file, done) {
     var script = document.createElement('script'), finished = false;
-    script.src = file;
+    script.src = file + '?v=20260911-premiere1';
     script.async = false;
     script.onload = script.onreadystatechange = function () {
       if (!finished && (!script.readyState || /loaded|complete/.test(script.readyState))) {

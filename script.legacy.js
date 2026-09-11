@@ -138,8 +138,8 @@ function mountHome() {
     return '\n    <article class="why__item rise" data-d="'.concat(i * 100, '" tabindex="0">\n      <span class="num">').concat(w.n, "</span>\n      <h3>").concat(LANG === "ua" ? w.tu : w.t, "</h3>\n      <p>").concat(T(w.d), "</p>\n    </article>");
   }).join("");
   var list = document.querySelector("[data-plist]");
-  if (list) list.innerHTML = PROJECTS.map(function(p, i) {
-    return '\n    <a class="prow rise" data-d="'.concat(i * 50, '" href="project.html?p=').concat(p.id, '">\n      <span class="num prow__num">').concat(nn(i), '</span>\n      <div class="prow__media"><img src="').concat(p.poster, '" alt="').concat(plain(T(p.titlePlain)), '" loading="lazy"></div>\n      <div class="prow__body">\n        <span class="label label--accent">').concat(T(p.kind), "</span>\n        <h3>").concat(T(p.title), '</h3>\n        <div class="prow__meta">\n          <span class="label">').concat(metaFirst(p), "</span>\n          ").concat(countLabel(p) ? '<span class="label">'.concat(countLabel(p), "</span>") : "", "\n        </div>\n      </div>\n    </a>");
+  if (list) list.innerHTML = PMT.promotionOrder(PROJECTS).map(function(p, i) {
+    return '\n    <a class="prow rise" data-d="'.concat(i * 50, '" ').concat(PMT.promotionAttrs(p, PROJECTS.indexOf(p)), ' href="project.html?p=').concat(p.id, '">\n      <span class="num prow__num">').concat(nn(i), '</span>\n      <div class="prow__media"><div class="premiere-cover"><img src="').concat(p.poster, '" alt="').concat(plain(T(p.titlePlain)), '" loading="lazy">').concat(PMT.promotionBadge(p), '</div></div>\n      <div class="prow__body">\n        <span class="label label--accent">').concat(T(p.kind), "</span>\n        <h3>").concat(T(p.title), '</h3>\n        <div class="prow__meta">\n          <span class="label">').concat(metaFirst(p), "</span>\n          ").concat(countLabel(p) ? '<span class="label">'.concat(countLabel(p), "</span>") : "", "\n        </div>\n      </div>\n    </a>");
   }).join("");
   var team = document.querySelector("[data-team]");
   if (team) team.innerHTML = TEAM.map(function(m, i) {
@@ -149,11 +149,11 @@ function mountHome() {
 function mountArchive() {
   var grid = document.querySelector("[data-grid]");
   if (!grid) return;
-  grid.innerHTML = PROJECTS.map(function(p, i) {
+  grid.innerHTML = PMT.promotionOrder(PROJECTS).map(function(p, i) {
     var year = PMT.find(p.meta, function(m) {
       return ["Год", "Год выпуска", "Премьера", "Рік"].indexOf(m[0]) !== -1;
     }) || null;
-    return '\n    <a class="card rise" data-d="'.concat(i * 60, '" href="project.html?p=').concat(p.id, '">\n      <div class="card__media"><img src="').concat(p.poster, '" alt="').concat(plain(T(p.titlePlain)), '" loading="lazy"></div>\n      <div class="card__body">\n        <span class="num">').concat(nn(i), " / ").concat(T(p.kind), "</span>\n        <h3>").concat(T(p.title), '</h3>\n      </div>\n      <div class="card__hair"></div>\n      ').concat(countLabel(p) || year ? '<div class="card__body"><p class="label">'.concat([countLabel(p), year ? T(year[1]) : ""].filter(Boolean).join(" / "), "</p></div>") : "", "\n    </a>");
+    return '\n    <a class="card rise" data-d="'.concat(i * 60, '" ').concat(PMT.promotionAttrs(p, PROJECTS.indexOf(p)), ' href="project.html?p=').concat(p.id, '">\n      <div class="card__media"><div class="premiere-cover"><img src="').concat(p.poster, '" alt="').concat(plain(T(p.titlePlain)), '" loading="lazy">').concat(PMT.promotionBadge(p), '</div></div>\n      <div class="card__body">\n        <span class="num">').concat(nn(i), " / ").concat(T(p.kind), "</span>\n        <h3>").concat(T(p.title), '</h3>\n      </div>\n      <div class="card__hair"></div>\n      ').concat(countLabel(p) || year ? '<div class="card__body"><p class="label">'.concat([countLabel(p), year ? T(year[1]) : ""].filter(Boolean).join(" / "), "</p></div>") : "", "\n    </a>");
   }).join("");
 }
 var modal = null;
@@ -203,7 +203,7 @@ function playerMarkup(ep) {
       (ep.fallback ? U("playerMoved") : U("inProduction")) + '</span></div></div>' + (ep.fallback ? note : '');
   }
   return '<div class="player-wrap"><div class="player" data-player="' + PMT.escape(ep.kinescope) + '" data-title="' + title + '">' +
-    '<img src="' + poster + '" alt="' + title + '" loading="lazy"><button class="player__btn" type="button" aria-label="' +
+    '<img src="' + poster + '" alt="' + title + '" loading="lazy">' + PMT.promotionBadge(ep) + '<button class="player__btn" type="button" aria-label="' +
     U("openEpisode") + ': ' + title + '"><span class="player__disc">' + PLAY + '</span></button></div>' + note + '</div>';
 }
 
@@ -221,7 +221,7 @@ function wirePlayers(scope) {
 function epRow(p, ep) {
   var t = plain(T(ep.title));
   var idx = p.episodes.indexOf(ep);
-  return '\n    <article class="ep">\n      <div class="ep__info">\n        <span class="num">'.concat(T(ep.n), '</span>\n        <h3 class="ep__title">').concat(t || T(ep.n), "</h3>\n        ").concat(btn(U("openSeparately"), "watch.html?p=".concat(p.id, "&e=").concat(idx + 1), "bare"), '\n      </div>\n      <div class="ep__stage">\n        ').concat(playerMarkup(ep), "\n        ").concat(ep.note ? '<p class="ep__note">'.concat(T(ep.note), "</p>") : "", "\n      </div>\n    </article>");
+  return '\n    <article class="ep" '.concat(PMT.promotionAttrs(ep, idx), '>\n      <div class="ep__info">\n        <span class="num">').concat(T(ep.n), '</span>\n        <h3 class="ep__title">').concat(t || T(ep.n), "</h3>\n        ").concat(btn(U("openSeparately"), "watch.html?p=".concat(p.id, "&e=").concat(idx + 1), "bare"), '\n      </div>\n      <div class="ep__stage">\n        ').concat(playerMarkup(ep), "\n        ").concat(ep.note ? '<p class="ep__note">'.concat(T(ep.note), "</p>") : "", "\n      </div>\n    </article>");
 }
 function mountProject() {
   var root = document.querySelector("[data-project]");
@@ -229,7 +229,7 @@ function mountProject() {
   var id = PMT.query().get("p") || PROJECTS[0].id;
   var p = findProject(id) || PROJECTS[0];
   document.title = "".concat(plain(T(p.titlePlain)), " / Problematic Team");
-  root.innerHTML = '\n    <section class="pj">\n      <div class="pj__media"><img src="'.concat(p.poster, '" alt="').concat(plain(T(p.titlePlain)), '"></div>\n      <div class="pj__side">\n        <span class="label label--accent rise" data-d="300">').concat(T(p.kind)).concat(p.original ? " / " + p.original : "", '</span>\n        <h1 class="rise" data-d="420">').concat(T(p.title), "</h1>\n        ").concat(p.trailer ? '<div class="ptrailer rise" data-d="700">\n          <span class="label">'.concat(U("trailerLabel")).concat(p.trailer.title ? " · " + plain(T(p.trailer.title)) : "", "</span>\n          ").concat(playerMarkup(p.trailer), "\n        </div>") : "", '\n        <p class="lead rise" data-d="900">').concat(T(p.lead), '</p>\n        <div class="metagrid rise" data-d="1040">\n          ').concat((p.meta || []).map(function(row) {
+  root.innerHTML = '\n    <section class="pj">\n      <div class="pj__media"><img src="'.concat(p.poster, '" alt="').concat(plain(T(p.titlePlain)), '">').concat(PMT.promotionBadge(p), '</div>\n      <div class="pj__side">\n        <span class="label label--accent rise" data-d="300">').concat(T(p.kind)).concat(p.original ? " / " + p.original : "", '</span>\n        <h1 class="rise" data-d="420">').concat(T(p.title), "</h1>\n        ").concat(p.trailer ? '<div class="ptrailer rise" data-d="700">\n          <span class="label">'.concat(U("trailerLabel")).concat(p.trailer.title ? " · " + plain(T(p.trailer.title)) : "", "</span>\n          ").concat(playerMarkup(p.trailer), "\n        </div>") : "", '\n        <p class="lead rise" data-d="900">').concat(T(p.lead), '</p>\n        <div class="metagrid rise" data-d="1040">\n          ').concat((p.meta || []).map(function(row) {
     return '<div><span class="label">'.concat(T(row[0]), "</span><span>").concat(T(row[1]), "</span></div>");
   }).join(""), "\n        </div>\n        ").concat(p.cast && p.cast.length ? '<div class="castblock rise" data-d="1140">\n          <span class="label">'.concat(U("castLabel"), '</span>\n          <div class="castlist">').concat(p.cast.map(function(row) {
     return "<span>".concat(T(row[0]), "&nbsp;— ").concat(row[1], "</span>");
@@ -238,15 +238,15 @@ function mountProject() {
   }).join(""), "\n        </div>") : "", '\n        <p class="tagline rise" data-d="1260">').concat(T(p.tagline), '</p>\n      </div>\n    </section>\n\n    <section class="section wrap" id="episodes">\n      <div class="statement">\n        <div>\n          <span class="label label--accent rise">').concat(unitMany(p), '</span>\n          <h2 class="rise" data-d="100">').concat(U("episodesH"), "</h2>\n        </div>\n        ").concat(U("episodesLead") ? '<p class="lead rise" data-d="200">'.concat(U("episodesLead"), "</p>") : "", "\n      </div>\n      ").concat(p.seasons ? '<div class="seasons rise" data-d="240">\n        '.concat(p.seasons.map(function(sn, si) {
     return '<button type="button" class="season__btn'.concat(si === 0 ? " is-on" : "", '"\n          data-season="').concat(si, '" aria-pressed="').concat(si === 0, '">').concat(T(sn.label), "</button>");
   }).join(""), "\n      </div>") : "", "\n      ").concat(p.seasons ? p.seasons.map(function(sn, si) {
-    return '\n        <div class="seasonbox'.concat(si === 0 ? " is-on" : "", '" data-seasonbox="').concat(si, '">\n          ').concat(sn.trailer ? '<div class="ep ep--trailer">\n            <div class="ep__info">\n              <span class="num">'.concat(U("seasonTrailer"), '</span>\n              <h3 class="ep__title">').concat(plain(T(sn.trailer.title)) || T(sn.label), '</h3>\n            </div>\n            <div class="ep__stage">').concat(playerMarkup(sn.trailer), "</div>\n          </div>") : "", '\n          <div class="eplist">').concat(sn.episodes.map(function(ep) {
+    return '\n        <div class="seasonbox'.concat(si === 0 ? " is-on" : "", '" data-seasonbox="').concat(si, '">\n          ').concat(sn.trailer ? '<div class="ep ep--trailer">\n            <div class="ep__info">\n              <span class="num">'.concat(U("seasonTrailer"), '</span>\n              <h3 class="ep__title">').concat(plain(T(sn.trailer.title)) || T(sn.label), '</h3>\n            </div>\n            <div class="ep__stage">').concat(playerMarkup(sn.trailer), "</div>\n          </div>") : "", '\n          <div class="eplist" data-premiere-list>').concat(PMT.promotionOrder(sn.episodes).map(function(ep) {
       return epRow(p, ep);
     }).join(""), "</div>\n        </div>");
-  }).join("") : p.episodes.length ? '<div class="eplist">'.concat(p.episodes.map(function(ep) {
+  }).join("") : p.episodes.length ? '<div class="eplist" data-premiere-list>'.concat(PMT.promotionOrder(p.episodes).map(function(ep) {
     return epRow(p, ep);
-  }).join(""), "</div>") : '<p class="lead">'.concat(U("noEpisodes"), "</p>"), '\n    </section>\n\n    <section class="section wrap">\n      <div class="statement">\n        <div>\n          <span class="label label--accent rise">').concat(U("otherLabel"), '</span>\n          <h2 class="rise" data-d="100">').concat(U("otherH"), '</h2>\n        </div>\n        <p class="lead rise" data-d="200">').concat(U("closed"), '</p>\n      </div>\n      <div class="plist mt-l">\n        ').concat(PROJECTS.filter(function(o) {
+  }).join(""), "</div>") : '<p class="lead">'.concat(U("noEpisodes"), "</p>"), '\n    </section>\n\n    <section class="section wrap">\n      <div class="statement">\n        <div>\n          <span class="label label--accent rise">').concat(U("otherLabel"), '</span>\n          <h2 class="rise" data-d="100">').concat(U("otherH"), '</h2>\n        </div>\n        <p class="lead rise" data-d="200">').concat(U("closed"), '</p>\n      </div>\n      <div class="plist mt-l" data-premiere-list>\n        ').concat(PMT.promotionOrder(PROJECTS).filter(function(o) {
     return o.id !== p.id;
   }).map(function(o, i) {
-    return '\n          <a class="prow rise" data-d="'.concat(i * 50, '" href="project.html?p=').concat(o.id, '">\n            <span class="num prow__num">').concat(nn(PROJECTS.indexOf(o)), '</span>\n            <div class="prow__media"><img src="').concat(o.poster, '" alt="').concat(plain(T(o.titlePlain)), '" loading="lazy"></div>\n            <div class="prow__body">\n              <span class="label label--accent">').concat(T(o.kind), "</span>\n              <h3>").concat(T(o.title), "</h3>\n            </div>\n          </a>");
+    return '\n          <a class="prow rise" data-d="'.concat(i * 50, '" ').concat(PMT.promotionAttrs(o, PROJECTS.indexOf(o)), ' href="project.html?p=').concat(o.id, '">\n            <span class="num prow__num">').concat(nn(PROJECTS.indexOf(o)), '</span>\n            <div class="prow__media"><div class="premiere-cover"><img src="').concat(o.poster, '" alt="').concat(plain(T(o.titlePlain)), '" loading="lazy">').concat(PMT.promotionBadge(o), '</div></div>\n            <div class="prow__body">\n              <span class="label label--accent">').concat(T(o.kind), "</span>\n              <h3>").concat(T(o.title), "</h3>\n            </div>\n          </a>");
   }).join(""), "\n      </div>\n    </section>");
   PMT.each(root.querySelectorAll("[data-open]"), function(b) {
     b.addEventListener("click", function() {
@@ -292,8 +292,10 @@ function mountWatch() {
   var requested = parseInt(q.get("e") || "1", 10);
   var idx = Math.min(Math.max(isNaN(requested) ? 1 : requested, 1), p.episodes.length) - 1;
   var ep = p.episodes[idx];
-  var prev = p.episodes[idx - 1] ? idx : null;
-  var next = p.episodes[idx + 1] ? idx + 2 : null;
+  var ordered = PMT.promotionOrder(p.episodes);
+  var position = ordered.indexOf(ep);
+  var prev = position > 0 ? p.episodes.indexOf(ordered[position - 1]) + 1 : null;
+  var next = position + 1 < ordered.length ? p.episodes.indexOf(ordered[position + 1]) + 1 : null;
   var t = plain(T(ep.title));
   document.title = "".concat(t, " / ").concat(plain(T(p.titlePlain)));
   var credits = ep.credits && Object.keys(ep.credits).length ? ep.credits : null;
@@ -415,6 +417,7 @@ function boot() {
   mountLangGate();
   wireImages();
   mountSmoothScroll();
+  PMT.mountPromotions();
   mountMotion();
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, false);

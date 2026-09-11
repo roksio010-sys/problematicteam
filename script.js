@@ -169,10 +169,10 @@ function mountHome() {
     </article>`).join('');
 
   const list = document.querySelector('[data-plist]');
-  if (list) list.innerHTML = PROJECTS.map((p, i) => `
-    <a class="prow rise" data-d="${i * 50}" href="project.html?p=${p.id}">
+  if (list) list.innerHTML = PMT.promotionOrder(PROJECTS).map((p, i) => `
+    <a class="prow rise" data-d="${i * 50}" ${PMT.promotionAttrs(p, PROJECTS.indexOf(p))} href="project.html?p=${p.id}">
       <span class="num prow__num">${nn(i)}</span>
-      <div class="prow__media"><img src="${p.poster}" alt="${plain(T(p.titlePlain))}" loading="lazy"></div>
+      <div class="prow__media"><div class="premiere-cover"><img src="${p.poster}" alt="${plain(T(p.titlePlain))}" loading="lazy">${PMT.promotionBadge(p)}</div></div>
       <div class="prow__body">
         <span class="label label--accent">${T(p.kind)}</span>
         <h3>${T(p.title)}</h3>
@@ -194,12 +194,12 @@ function mountHome() {
 function mountArchive() {
   const grid = document.querySelector('[data-grid]');
   if (!grid) return;
-  grid.innerHTML = PROJECTS.map((p, i) => {
+  grid.innerHTML = PMT.promotionOrder(PROJECTS).map((p, i) => {
     const year = p.meta.find((m) => ['Год', 'Год выпуска', 'Премьера', 'Рік'].includes(m[0]))
       || null;
     return `
-    <a class="card rise" data-d="${i * 60}" href="project.html?p=${p.id}">
-      <div class="card__media"><img src="${p.poster}" alt="${plain(T(p.titlePlain))}" loading="lazy"></div>
+    <a class="card rise" data-d="${i * 60}" ${PMT.promotionAttrs(p, PROJECTS.indexOf(p))} href="project.html?p=${p.id}">
+      <div class="card__media"><div class="premiere-cover"><img src="${p.poster}" alt="${plain(T(p.titlePlain))}" loading="lazy">${PMT.promotionBadge(p)}</div></div>
       <div class="card__body">
         <span class="num">${nn(i)} / ${T(p.kind)}</span>
         <h3>${T(p.title)}</h3>
@@ -266,7 +266,7 @@ function playerMarkup(ep) {
     </div>`;
   }
   return `<div class="player" data-player="${ep.kinescope}" data-title="${title}">
-    <img src="${ep.poster}" alt="${title}" loading="lazy">
+    <img src="${ep.poster}" alt="${title}" loading="lazy">${PMT.promotionBadge(ep)}
     <button class="player__btn" type="button" aria-label="${U('openEpisode')}: ${title}">
       <span class="player__disc">${PLAY}</span>
     </button>
@@ -290,7 +290,7 @@ function epRow(p, ep) {
   const t = plain(T(ep.title));
   const idx = p.episodes.indexOf(ep);
   return `
-    <article class="ep">
+    <article class="ep" ${PMT.promotionAttrs(ep, idx)}>
       <div class="ep__info">
         <span class="num">${T(ep.n)}</span>
         <h3 class="ep__title">${t || T(ep.n)}</h3>
@@ -313,7 +313,7 @@ function mountProject() {
 
   root.innerHTML = `
     <section class="pj">
-      <div class="pj__media"><img src="${p.poster}" alt="${plain(T(p.titlePlain))}"></div>
+      <div class="pj__media"><img src="${p.poster}" alt="${plain(T(p.titlePlain))}">${PMT.promotionBadge(p)}</div>
       <div class="pj__side">
         <span class="label label--accent rise" data-d="300">${T(p.kind)}${p.original ? ' / ' + p.original : ''}</span>
         <h1 class="rise" data-d="420">${T(p.title)}</h1>
@@ -357,10 +357,10 @@ function mountProject() {
             </div>
             <div class="ep__stage">${playerMarkup(sn.trailer)}</div>
           </div>` : ''}
-          <div class="eplist">${sn.episodes.map((ep) => epRow(p, ep)).join('')}</div>
+          <div class="eplist" data-premiere-list>${PMT.promotionOrder(sn.episodes).map((ep) => epRow(p, ep)).join('')}</div>
         </div>`).join('')
       : (p.episodes.length
-          ? `<div class="eplist">${p.episodes.map((ep) => epRow(p, ep)).join('')}</div>`
+          ? `<div class="eplist" data-premiere-list>${PMT.promotionOrder(p.episodes).map((ep) => epRow(p, ep)).join('')}</div>`
           : `<p class="lead">${U('noEpisodes')}</p>`)}
     </section>
 
@@ -372,11 +372,11 @@ function mountProject() {
         </div>
         <p class="lead rise" data-d="200">${U('closed')}</p>
       </div>
-      <div class="plist mt-l">
-        ${PROJECTS.filter((o) => o.id !== p.id).map((o, i) => `
-          <a class="prow rise" data-d="${i * 50}" href="project.html?p=${o.id}">
+      <div class="plist mt-l" data-premiere-list>
+        ${PMT.promotionOrder(PROJECTS).filter((o) => o.id !== p.id).map((o, i) => `
+          <a class="prow rise" data-d="${i * 50}" ${PMT.promotionAttrs(o, PROJECTS.indexOf(o))} href="project.html?p=${o.id}">
             <span class="num prow__num">${nn(PROJECTS.indexOf(o))}</span>
-            <div class="prow__media"><img src="${o.poster}" alt="${plain(T(o.titlePlain))}" loading="lazy"></div>
+            <div class="prow__media"><div class="premiere-cover"><img src="${o.poster}" alt="${plain(T(o.titlePlain))}" loading="lazy">${PMT.promotionBadge(o)}</div></div>
             <div class="prow__body">
               <span class="label label--accent">${T(o.kind)}</span>
               <h3>${T(o.title)}</h3>
@@ -413,8 +413,10 @@ function mountWatch() {
   const p = findProject(q.get('p')) || PROJECTS[0];
   const idx = Math.min(Math.max(parseInt(q.get('e') || '1', 10), 1), p.episodes.length) - 1;
   const ep = p.episodes[idx];
-  const prev = p.episodes[idx - 1] ? idx : null;
-  const next = p.episodes[idx + 1] ? idx + 2 : null;
+  const ordered = PMT.promotionOrder(p.episodes);
+  const position = ordered.indexOf(ep);
+  const prev = position > 0 ? p.episodes.indexOf(ordered[position - 1]) + 1 : null;
+  const next = position + 1 < ordered.length ? p.episodes.indexOf(ordered[position + 1]) + 1 : null;
   const t = plain(T(ep.title));
   document.title = `${t} / ${plain(T(p.titlePlain))}`;
 
@@ -534,6 +536,7 @@ function bootModern() {
   wirePlayers();
   mountSmoothScroll();
   mountScrollSpeed();
+  PMT.mountPromotions();
   mountMotion();
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootModern);
