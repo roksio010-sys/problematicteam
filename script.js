@@ -556,23 +556,27 @@ function detectCountry() {
   if (!window.fetch) return Promise.resolve();
   return new Promise((resolve) => {
     let done = false;
-    const finish = (country) => {
+    const finish = (countries) => {
       if (done) return;
       done = true;
-      PMT.geoCountry = String(country || '').trim().toUpperCase();
+      const list = countries.filter(Boolean).map((country) => String(country).trim().toUpperCase());
+      PMT.geoCountry = list.indexOf('UA') >= 0 ? 'UA' : (list[0] || '');
       if (PMT.geoCountry) {
         try { sessionStorage.setItem('pmt-country', PMT.geoCountry); } catch (err) {}
       }
       resolve();
     };
-    window.setTimeout(() => finish(''), 1800);
-    fetch('https://ipwho.is/?fields=success,country_code', { cache: 'no-store' })
+    window.setTimeout(() => finish([]), 2200);
+    const ipwho = fetch('https://ipwho.is/?fields=success,country_code', { cache: 'no-store' })
       .then((response) => response.ok ? response.json() : null)
-      .then((result) => finish(result && result.success !== false ? result.country_code : ''))
-      .catch(() => finish(''));
+      .then((result) => result && result.success !== false ? result.country_code : '')
+      .catch(() => '');
+    const ipapi = fetch('https://ipapi.co/country/', { cache: 'no-store' })
+      .then((response) => response.ok ? response.text() : '')
+      .catch(() => '');
+    Promise.all([ipwho, ipapi]).then(finish);
   });
 }
-
 function bootModern() {
   detectCountry().then(() => {
     mountLangGate();

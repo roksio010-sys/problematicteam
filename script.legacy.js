@@ -428,31 +428,57 @@ function detectCountry(done) {
     done();
     return;
   }
-  var xhr = new XMLHttpRequest();
+  var urls = [
+    "https://ipwho.is/?fields=success,country_code",
+    "https://ipapi.co/country/"
+  ];
+  var countries = [];
+  var remaining = urls.length;
   var finished = false;
-  function finish(country) {
+  function finish() {
     if (finished) return;
     finished = true;
-    PMT.geoCountry = String(country || "").replace(/^\s+|\s+$/g, "").toUpperCase();
+    var normalized = countries.map(function(country) {
+      return String(country || "").replace(/^\s+|\s+$/g, "").toUpperCase();
+    });
+    PMT.geoCountry = normalized.indexOf("UA") >= 0 ? "UA" : (normalized[0] || "");
     if (PMT.geoCountry) {
       try { sessionStorage.setItem("pmt-country", PMT.geoCountry); } catch (err2) {}
     }
     done();
   }
-  xhr.onreadystatechange = function() {
-    if (xhr.readyState !== 4) return;
-    if (xhr.status < 200 || xhr.status >= 300) { finish(""); return; }
+  function complete(country) {
+    countries.push(country);
+    remaining -= 1;
+    if (!remaining) finish();
+  }
+  function request(url, json) {
+    var xhr = new XMLHttpRequest();
+    var settled = false;
+    function settle(country) {
+      if (settled) return;
+      settled = true;
+      complete(country);
+    }
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState !== 4) return;
+      if (xhr.status < 200 || xhr.status >= 300) { settle(""); return; }
+      if (!json) { settle(xhr.responseText); return; }
+      try {
+        var result = JSON.parse(xhr.responseText);
+        settle(result && result.success !== false ? result.country_code : "");
+      } catch (err3) { settle(""); }
+    };
+    xhr.onerror = xhr.ontimeout = function() { settle(""); };
     try {
-      var result = JSON.parse(xhr.responseText);
-      finish(result && result.success !== false ? result.country_code : "");
-    } catch (err4) { finish(""); }
-  };
-  xhr.onerror = xhr.ontimeout = function() { finish(""); };
-  try {
-    xhr.open("GET", "https://ipwho.is/?fields=success,country_code", true);
-    xhr.timeout = 1800;
-    xhr.send();
-  } catch (err3) { finish(""); }
+      xhr.open("GET", url, true);
+      xhr.timeout = 1800;
+      xhr.send();
+    } catch (err4) { settle(""); }
+  }
+  window.setTimeout(finish, 2200);
+  request(urls[0], true);
+  request(urls[1], false);
 }
 function boot() {
   detectCountry(function() {
