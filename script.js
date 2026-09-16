@@ -432,8 +432,9 @@ function mountWatch() {
     root.innerHTML = `<section class="watch wrap"><h1 class="h1--watch">${T(p.title)}</h1><p class="lead mt-s">${U('noEpisodes')}</p>${btn(U('allEpisodes'), `project.html?p=${p.id}`, 'line')}</section>`;
     return;
   }
-  const idx = Math.min(requested, episodes.length) - 1;
-  const ep = episodes[idx];
+  const ep = requestedEpisode && !PMT.isRestrictedEpisode(requestedEpisode)
+    ? requestedEpisode
+    : episodes[Math.min(requested, episodes.length) - 1];
   const ordered = PMT.promotionOrder(episodes);
   const position = ordered.indexOf(ep);
   const prev = position > 0 ? p.episodes.indexOf(ordered[position - 1]) + 1 : null;

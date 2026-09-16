@@ -306,8 +306,7 @@ function mountWatch() {
     root.innerHTML = '<section class="watch wrap"><h1 class="h1--watch">' + T(p.title) + '</h1><p class="lead mt-s">' + U("noEpisodes") + "</p>" + btn(U("allEpisodes"), "project.html?p=" + p.id, "line") + "</section>";
     return;
   }
-  var idx = Math.min(requested, episodes.length) - 1;
-  var ep = episodes[idx];
+  var ep = requestedEpisode && !PMT.isRestrictedEpisode(requestedEpisode) ? requestedEpisode : episodes[Math.min(requested, episodes.length) - 1];
   var ordered = PMT.promotionOrder(episodes);
   var position = ordered.indexOf(ep);
   var prev = position > 0 ? p.episodes.indexOf(ordered[position - 1]) + 1 : null;
