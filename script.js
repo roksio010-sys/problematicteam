@@ -40,14 +40,20 @@ function pluralForm(n) {
   return 2;
 }
 /* «1 серия», «2 серии», «5 серий», ничего если пусто */
-function countLabel(p) {
-  const n = p.episodes.length;
+const countLabel = (p) => {
+  const n = PMT.visibleEpisodes(p).length;
   if (!n) return '';
   const table = PLURALS[LANG] || PLURALS.ru;
   const forms = isParts(p) ? table.part : table.ep;
   return n + '\u00A0' + forms[pluralForm(n)];
 }
 /* имя участника с учётом языка */
+function visibleMeta(p) {
+  const count = PMT.visibleEpisodes(p).length;
+  return (p.meta || []).map(([key, value]) =>
+    /^(Роликов|Роликів|Серий|Серій)$/.test(key) ? [key, String(count)] : [key, value]);
+}
+
 const nameOf = (m) => (LANG === 'ua' && typeof NAMES_UA !== 'undefined' && NAMES_UA[m.name]) || m.name;
 
 /* парный проект в другом языке: null — пары нет */
@@ -309,6 +315,7 @@ function mountProject() {
   if (!root) return;
   const id = new URLSearchParams(location.search).get('p') || PROJECTS[0].id;
   const p = findProject(id) || PROJECTS[0];
+  const episodes = PMT.visibleEpisodes(p);
   document.title = `${plain(T(p.titlePlain))} / Problematic Team`;
 
   root.innerHTML = `
@@ -323,7 +330,7 @@ function mountProject() {
         </div>` : ''}
         <p class="lead rise" data-d="900">${T(p.lead)}</p>
         <div class="metagrid rise" data-d="1040">
-          ${(p.meta || []).map(([k, v]) => `<div><span class="label">${T(k)}</span><span>${T(v)}</span></div>`).join('')}
+          ${visibleMeta(p).map(([k, v]) => `<div><span class="label">${T(k)}</span><span>${T(v)}</span></div>`).join('')}
         </div>
         ${p.cast && p.cast.length ? `<div class="castblock rise" data-d="1140">
           <span class="label">${U('castLabel')}</span>
@@ -359,8 +366,8 @@ function mountProject() {
           </div>` : ''}
           <div class="eplist" data-premiere-list>${PMT.promotionOrder(sn.episodes).map((ep) => epRow(p, ep)).join('')}</div>
         </div>`).join('')
-      : (p.episodes.length
-          ? `<div class="eplist" data-premiere-list>${PMT.promotionOrder(p.episodes).map((ep) => epRow(p, ep)).join('')}</div>`
+      : (episodes.length
+          ? `<div class="eplist" data-premiere-list>${PMT.promotionOrder(episodes).map((ep) => epRow(p, ep)).join('')}</div>`
           : `<p class="lead">${U('noEpisodes')}</p>`)}
     </section>
 
@@ -411,16 +418,29 @@ function mountWatch() {
   if (!root) return;
   const q = new URLSearchParams(location.search);
   const p = findProject(q.get('p')) || PROJECTS[0];
-  const idx = Math.min(Math.max(parseInt(q.get('e') || '1', 10), 1), p.episodes.length) - 1;
-  const ep = p.episodes[idx];
-  const ordered = PMT.promotionOrder(p.episodes);
+  const requested = Math.max(parseInt(q.get('e') || '1', 10) || 1, 1);
+  const allEpisodes = p.episodes || [];
+  const requestedEpisode = allEpisodes[Math.min(requested, allEpisodes.length) - 1];
+  if (requestedEpisode && PMT.isRestrictedEpisode(requestedEpisode)) {
+    document.title = `${plain(T(p.titlePlain))} / Problematic Team`;
+    root.innerHTML = `<section class="watch wrap"><h1 class="h1--watch">${T(p.title)}</h1><p class="lead mt-s">${U('geoRestricted')}</p>${btn(U('allEpisodes'), `project.html?p=${p.id}`, 'line')}</section>`;
+    return;
+  }
+  const episodes = PMT.visibleEpisodes(p);
+  if (!episodes.length) {
+    document.title = `${plain(T(p.titlePlain))} / Problematic Team`;
+    root.innerHTML = `<section class="watch wrap"><h1 class="h1--watch">${T(p.title)}</h1><p class="lead mt-s">${U('noEpisodes')}</p>${btn(U('allEpisodes'), `project.html?p=${p.id}`, 'line')}</section>`;
+    return;
+  }
+  const idx = Math.min(requested, episodes.length) - 1;
+  const ep = episodes[idx];
+  const ordered = PMT.promotionOrder(episodes);
   const position = ordered.indexOf(ep);
   const prev = position > 0 ? p.episodes.indexOf(ordered[position - 1]) + 1 : null;
   const next = position + 1 < ordered.length ? p.episodes.indexOf(ordered[position + 1]) + 1 : null;
   const t = plain(T(ep.title));
   document.title = `${t} / ${plain(T(p.titlePlain))}`;
 
-  /* титры показываем только если они реально известны для этой серии */
   const credits = (ep.credits && Object.keys(ep.credits).length) ? ep.credits : null;
 
   root.innerHTML = `
@@ -525,19 +545,48 @@ function mountMotion() {
   window.addEventListener('resize', onResize);
 }
 
+function detectCountry() {
+  let cached = '';
+  try { cached = sessionStorage.getItem('pmt-country') || ''; } catch (err) {}
+  if (cached) {
+    PMT.geoCountry = cached.toUpperCase();
+    return Promise.resolve();
+  }
+  if (!window.fetch) return Promise.resolve();
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (country) => {
+      if (done) return;
+      done = true;
+      PMT.geoCountry = String(country || '').trim().toUpperCase();
+      if (PMT.geoCountry) {
+        try { sessionStorage.setItem('pmt-country', PMT.geoCountry); } catch (err) {}
+      }
+      resolve();
+    };
+    window.setTimeout(() => finish(''), 1800);
+    fetch('https://ipwho.is/?fields=success,country_code', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() : null)
+      .then((result) => finish(result && result.success !== false ? result.country_code : ''))
+      .catch(() => finish(''));
+  });
+}
+
 function bootModern() {
-  mountLangGate();
-  mountChrome();
-  mountStatic();
-  mountHome();
-  mountArchive();
-  mountProject();
-  mountWatch();
-  wirePlayers();
-  mountSmoothScroll();
-  mountScrollSpeed();
-  PMT.mountPromotions();
-  mountMotion();
+  detectCountry().then(() => {
+    mountLangGate();
+    mountChrome();
+    mountStatic();
+    mountHome();
+    mountArchive();
+    mountProject();
+    mountWatch();
+    wirePlayers();
+    mountSmoothScroll();
+    mountScrollSpeed();
+    PMT.mountPromotions();
+    mountMotion();
+  });
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootModern);
 else bootModern();

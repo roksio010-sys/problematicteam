@@ -44,11 +44,17 @@ function pluralForm(n) {
   return 2;
 }
 function countLabel(p) {
-  var n = p.episodes.length;
+  var n = PMT.visibleEpisodes(p).length;
   if (!n) return "";
   var table = PLURALS[LANG] || PLURALS.ru;
   var forms = isParts(p) ? table.part : table.ep;
   return n + " " + forms[pluralForm(n)];
+}
+function visibleMeta(p) {
+  var count = PMT.visibleEpisodes(p).length;
+  return (p.meta || []).map(function(row) {
+    return /^(Роликов|Роликів|Серий|Серій)$/.test(row[0]) ? [row[0], String(count)] : row;
+  });
 }
 var nameOf = function(m) {
   return LANG === "ua" && typeof NAMES_UA !== "undefined" && NAMES_UA[m.name] || m.name;
@@ -228,8 +234,9 @@ function mountProject() {
   if (!root) return;
   var id = PMT.query().get("p") || PROJECTS[0].id;
   var p = findProject(id) || PROJECTS[0];
+  var episodes = PMT.visibleEpisodes(p);
   document.title = "".concat(plain(T(p.titlePlain)), " / Problematic Team");
-  root.innerHTML = '\n    <section class="pj">\n      <div class="pj__media"><img src="'.concat(p.poster, '" alt="').concat(plain(T(p.titlePlain)), '">').concat(PMT.promotionBadge(p), '</div>\n      <div class="pj__side">\n        <span class="label label--accent rise" data-d="300">').concat(T(p.kind)).concat(p.original ? " / " + p.original : "", '</span>\n        <h1 class="rise" data-d="420">').concat(T(p.title), "</h1>\n        ").concat(p.trailer ? '<div class="ptrailer rise" data-d="700">\n          <span class="label">'.concat(U("trailerLabel")).concat(p.trailer.title ? " · " + plain(T(p.trailer.title)) : "", "</span>\n          ").concat(playerMarkup(p.trailer), "\n        </div>") : "", '\n        <p class="lead rise" data-d="900">').concat(T(p.lead), '</p>\n        <div class="metagrid rise" data-d="1040">\n          ').concat((p.meta || []).map(function(row) {
+  root.innerHTML = '\n    <section class="pj">\n      <div class="pj__media"><img src="'.concat(p.poster, '" alt="').concat(plain(T(p.titlePlain)), '">').concat(PMT.promotionBadge(p), '</div>\n      <div class="pj__side">\n        <span class="label label--accent rise" data-d="300">').concat(T(p.kind)).concat(p.original ? " / " + p.original : "", '</span>\n        <h1 class="rise" data-d="420">').concat(T(p.title), "</h1>\n        ").concat(p.trailer ? '<div class="ptrailer rise" data-d="700">\n          <span class="label">'.concat(U("trailerLabel")).concat(p.trailer.title ? " · " + plain(T(p.trailer.title)) : "", "</span>\n          ").concat(playerMarkup(p.trailer), "\n        </div>") : "", '\n        <p class="lead rise" data-d="900">').concat(T(p.lead), '</p>\n        <div class="metagrid rise" data-d="1040">\n          ').concat(visibleMeta(p).map(function(row) {
     return '<div><span class="label">'.concat(T(row[0]), "</span><span>").concat(T(row[1]), "</span></div>");
   }).join(""), "\n        </div>\n        ").concat(p.cast && p.cast.length ? '<div class="castblock rise" data-d="1140">\n          <span class="label">'.concat(U("castLabel"), '</span>\n          <div class="castlist">').concat(p.cast.map(function(row) {
     return "<span>".concat(T(row[0]), "&nbsp;— ").concat(row[1], "</span>");
@@ -241,7 +248,7 @@ function mountProject() {
     return '\n        <div class="seasonbox'.concat(si === 0 ? " is-on" : "", '" data-seasonbox="').concat(si, '">\n          ').concat(sn.trailer ? '<div class="ep ep--trailer">\n            <div class="ep__info">\n              <span class="num">'.concat(U("seasonTrailer"), '</span>\n              <h3 class="ep__title">').concat(plain(T(sn.trailer.title)) || T(sn.label), '</h3>\n            </div>\n            <div class="ep__stage">').concat(playerMarkup(sn.trailer), "</div>\n          </div>") : "", '\n          <div class="eplist" data-premiere-list>').concat(PMT.promotionOrder(sn.episodes).map(function(ep) {
       return epRow(p, ep);
     }).join(""), "</div>\n        </div>");
-  }).join("") : p.episodes.length ? '<div class="eplist" data-premiere-list>'.concat(PMT.promotionOrder(p.episodes).map(function(ep) {
+  }).join("") : episodes.length ? '<div class="eplist" data-premiere-list>'.concat(PMT.promotionOrder(episodes).map(function(ep) {
     return epRow(p, ep);
   }).join(""), "</div>") : '<p class="lead">'.concat(U("noEpisodes"), "</p>"), '\n    </section>\n\n    <section class="section wrap">\n      <div class="statement">\n        <div>\n          <span class="label label--accent rise">').concat(U("otherLabel"), '</span>\n          <h2 class="rise" data-d="100">').concat(U("otherH"), '</h2>\n        </div>\n        <p class="lead rise" data-d="200">').concat(U("closed"), '</p>\n      </div>\n      <div class="plist mt-l" data-premiere-list>\n        ').concat(PMT.promotionOrder(PROJECTS).filter(function(o) {
     return o.id !== p.id;
@@ -284,15 +291,24 @@ function mountWatch() {
   if (!root) return;
   var q = PMT.query();
   var p = findProject(q.get("p")) || PROJECTS[0];
-  if (!p.episodes.length) {
+  var allEpisodes = p.episodes || [];
+  var requested = parseInt(q.get("e") || "1", 10);
+  requested = isNaN(requested) ? 1 : Math.max(requested, 1);
+  var requestedEpisode = allEpisodes[Math.min(requested, allEpisodes.length) - 1];
+  if (requestedEpisode && PMT.isRestrictedEpisode(requestedEpisode)) {
+    document.title = plain(T(p.titlePlain)) + " / Problematic Team";
+    root.innerHTML = '<section class="watch wrap"><h1 class="h1--watch">' + T(p.title) + '</h1><p class="lead mt-s">' + U("geoRestricted") + "</p>" + btn(U("allEpisodes"), "project.html?p=" + p.id, "line") + "</section>";
+    return;
+  }
+  var episodes = PMT.visibleEpisodes(p);
+  if (!episodes.length) {
     document.title = plain(T(p.titlePlain)) + " / Problematic Team";
     root.innerHTML = '<section class="watch wrap"><h1 class="h1--watch">' + T(p.title) + '</h1><p class="lead mt-s">' + U("noEpisodes") + "</p>" + btn(U("allEpisodes"), "project.html?p=" + p.id, "line") + "</section>";
     return;
   }
-  var requested = parseInt(q.get("e") || "1", 10);
-  var idx = Math.min(Math.max(isNaN(requested) ? 1 : requested, 1), p.episodes.length) - 1;
-  var ep = p.episodes[idx];
-  var ordered = PMT.promotionOrder(p.episodes);
+  var idx = Math.min(requested, episodes.length) - 1;
+  var ep = episodes[idx];
+  var ordered = PMT.promotionOrder(episodes);
   var position = ordered.indexOf(ep);
   var prev = position > 0 ? p.episodes.indexOf(ordered[position - 1]) + 1 : null;
   var next = position + 1 < ordered.length ? p.episodes.indexOf(ordered[position + 1]) + 1 : null;
@@ -405,20 +421,56 @@ function mountFonts() {
   link.href = "https://fonts.googleapis.com/css2?family=Onest:wght@300;400&display=swap";
   document.getElementsByTagName("head")[0].appendChild(link);
 }
+function detectCountry(done) {
+  var cached = "";
+  try { cached = sessionStorage.getItem("pmt-country") || ""; } catch (err) {}
+  if (cached) {
+    PMT.geoCountry = cached.toUpperCase();
+    done();
+    return;
+  }
+  var xhr = new XMLHttpRequest();
+  var finished = false;
+  function finish(country) {
+    if (finished) return;
+    finished = true;
+    PMT.geoCountry = String(country || "").replace(/^\s+|\s+$/g, "").toUpperCase();
+    if (PMT.geoCountry) {
+      try { sessionStorage.setItem("pmt-country", PMT.geoCountry); } catch (err2) {}
+    }
+    done();
+  }
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    if (xhr.status < 200 || xhr.status >= 300) { finish(""); return; }
+    try {
+      var result = JSON.parse(xhr.responseText);
+      finish(result && result.success !== false ? result.country_code : "");
+    } catch (err4) { finish(""); }
+  };
+  xhr.onerror = xhr.ontimeout = function() { finish(""); };
+  try {
+    xhr.open("GET", "https://ipwho.is/?fields=success,country_code", true);
+    xhr.timeout = 1800;
+    xhr.send();
+  } catch (err3) { finish(""); }
+}
 function boot() {
-  mountChrome();
-  mountStatic();
-  mountHome();
-  mountArchive();
-  mountProject();
-  mountWatch();
-  wirePlayers();
-  wireLocalLinks();
-  mountLangGate();
-  wireImages();
-  mountSmoothScroll();
-  PMT.mountPromotions();
-  mountMotion();
+  detectCountry(function() {
+    mountChrome();
+    mountStatic();
+    mountHome();
+    mountArchive();
+    mountProject();
+    mountWatch();
+    wirePlayers();
+    wireLocalLinks();
+    mountLangGate();
+    wireImages();
+    mountSmoothScroll();
+    PMT.mountPromotions();
+    mountMotion();
+  });
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, false);
 else boot();
