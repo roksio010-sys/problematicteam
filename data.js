@@ -62,8 +62,8 @@ var UI = {
   episodesH: { ru: "СМОТРЕТЬ<br>ОНЛАЙН", ua: "ДИВИТИСЯ<br>ОНЛАЙН" },
   episodesLead: { ru: "", ua: "" },
   teamNote: {
-    ru: "Данные актуальны на&nbsp;24.08.2026",
-    ua: "Дані актуальні на&nbsp;24.08.2026"
+    ru: "Данные актуальны на&nbsp;17.09.2026",
+    ua: "Дані актуальні на&nbsp;17.09.2026"
   },
   openSeparately: { ru: "Открыть серию отдельно", ua: "Відкрити серію окремо" },
   trailerLabel: { ru: "Трейлер", ua: "Трейлер" },
@@ -365,9 +365,13 @@ var TEAM = [
   },
   {
     name: "Александр (Саня, Sadowhell)",
-    role: {
+    roleUkraine: {
       ru: "Один из основателей команды. Занимался монтажом, музыкой, озвучил Слайда в «Спасти будущее», постоянно участвовал в подкастах. Ушёл 21.06.2026: он сам давно хотел уйти и покинуть команду — просто вырос из этого.",
       ua: "Один із засновників команди. Займався монтажем, музикою, озвучив Слайда у «Врятувати майбутнє», постійно брав участь у подкастах. Пішов 21.06.2026: він давно хотів піти й залишити команду — просто виріс із цього."
+    },
+    role: {
+      ru: "Один из основателей команды. Занимался монтажом, музыкой, озвучил Слайда в «Спасти будущее», постоянно участвовал в подкастах. Ушёл 21.06.2026 из-за ссоры с Васяничем.",
+      ua: "Один із засновників команди. Займався монтажем, музикою, озвучив Слайда у «Врятувати майбутнє», постійно брав участь у подкастах. Пішов 21.06.2026 через сварку з Васяничем."
     }
   },
   {
@@ -407,7 +411,10 @@ var TEAM = [
   },
   {
     name: "Peshka",
-    role: { ru: "Ничего не известно (07.05 → 03.06.2024).", ua: "Нічого не відомо (07.05 → 03.06.2024)." }
+    role: {
+      ru: "Помогала с фонами в «Фанатском продолжении удивительного мира Гамбола». Участие в команде: 07.05 → 03.06.2024.",
+      ua: "Допомагала з фонами у «Фанатському продовженні дивовижного світу Гамбола». Участь у команді: 07.05 → 03.06.2024."
+    }
   },
   {
     name: "Миха",
@@ -1324,13 +1331,21 @@ var PROJECTS_UA = [
     episodes: []
   })
 ];
+/* Unknown country: hide the restricted episode, use the existing biography. */
 PMT.geoCountry = "";
 PMT.restrictedEpisodeId = "jJ3CrqdDLwFLyvbJZeG4CY";
+PMT.regionRestricted = function() {
+  var country = String(PMT.geoCountry || "").toUpperCase();
+  return !/^[A-Z]{2}$/.test(country) || country === "UA" || country === "XX" || country === "T1";
+};
 PMT.isRestrictedEpisode = function(ep) {
-  return String(PMT.geoCountry || "").toUpperCase() === "UA" && ep && ep.kinescope === PMT.restrictedEpisodeId;
+  return !!(PMT.regionRestricted() && ep && ep.kinescope === PMT.restrictedEpisodeId);
 };
 PMT.visibleEpisodes = function(project) {
   return (project.episodes || []).filter(function(ep) { return !PMT.isRestrictedEpisode(ep); });
+};
+PMT.memberRole = function(member) {
+  return member.roleUkraine && PMT.regionRestricted() ? member.roleUkraine : member.role;
 };
 
 var PMT_LANG = PMT.getLang() === "ua" ? "ua" : "ru";

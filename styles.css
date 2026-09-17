@@ -434,3 +434,7 @@ html.is-rush .rise{--d:0ms!important;transition-duration:120ms!important}
   white-space:nowrap;pointer-events:none;box-shadow:0 3px 14px rgba(0,0,0,.4)
 }
 @media(max-width:480px){.premiere-badge{top:8px;right:8px;padding:6px 9px;font-size:11px}}
+
+/* Privacy notice, also readable without the modern layout. */
+.foot__privacy { max-width: 720px; line-height: 1.7; }
+.foot__privacy a { text-decoration: underline; text-underline-offset: 3px; }

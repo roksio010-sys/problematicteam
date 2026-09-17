@@ -149,7 +149,7 @@ function mountHome() {
   }).join("");
   var team = document.querySelector("[data-team]");
   if (team) team.innerHTML = TEAM.map(function(m, i) {
-    return '\n    <div class="team__row rise" data-d="'.concat(Math.min(i, 8) * 50, '">\n      <b>').concat(nameOf(m), "</b><span>").concat(T(m.role), "</span>\n    </div>");
+    return '\n    <div class="team__row rise" data-d="'.concat(Math.min(i, 8) * 50, '">\n      <b>').concat(nameOf(m), "</b><span>").concat(T(PMT.memberRole(m)), "</span>\n    </div>");
   }).join("");
 }
 function mountArchive() {
@@ -245,7 +245,7 @@ function mountProject() {
   }).join(""), "\n        </div>") : "", '\n        <p class="tagline rise" data-d="1260">').concat(T(p.tagline), '</p>\n      </div>\n    </section>\n\n    <section class="section wrap" id="episodes">\n      <div class="statement">\n        <div>\n          <span class="label label--accent rise">').concat(unitMany(p), '</span>\n          <h2 class="rise" data-d="100">').concat(U("episodesH"), "</h2>\n        </div>\n        ").concat(U("episodesLead") ? '<p class="lead rise" data-d="200">'.concat(U("episodesLead"), "</p>") : "", "\n      </div>\n      ").concat(p.seasons ? '<div class="seasons rise" data-d="240">\n        '.concat(p.seasons.map(function(sn, si) {
     return '<button type="button" class="season__btn'.concat(si === 0 ? " is-on" : "", '"\n          data-season="').concat(si, '" aria-pressed="').concat(si === 0, '">').concat(T(sn.label), "</button>");
   }).join(""), "\n      </div>") : "", "\n      ").concat(p.seasons ? p.seasons.map(function(sn, si) {
-    return '\n        <div class="seasonbox'.concat(si === 0 ? " is-on" : "", '" data-seasonbox="').concat(si, '">\n          ').concat(sn.trailer ? '<div class="ep ep--trailer">\n            <div class="ep__info">\n              <span class="num">'.concat(U("seasonTrailer"), '</span>\n              <h3 class="ep__title">').concat(plain(T(sn.trailer.title)) || T(sn.label), '</h3>\n            </div>\n            <div class="ep__stage">').concat(playerMarkup(sn.trailer), "</div>\n          </div>") : "", '\n          <div class="eplist" data-premiere-list>').concat(PMT.promotionOrder(sn.episodes).map(function(ep) {
+    return '\n        <div class="seasonbox'.concat(si === 0 ? " is-on" : "", '" data-seasonbox="').concat(si, '">\n          ').concat(sn.trailer ? '<div class="ep ep--trailer">\n            <div class="ep__info">\n              <span class="num">'.concat(U("seasonTrailer"), '</span>\n              <h3 class="ep__title">').concat(plain(T(sn.trailer.title)) || T(sn.label), '</h3>\n            </div>\n            <div class="ep__stage">').concat(playerMarkup(sn.trailer), "</div>\n          </div>") : "", '\n          <div class="eplist" data-premiere-list>').concat(PMT.promotionOrder(PMT.visibleEpisodes(sn)).map(function(ep) {
       return epRow(p, ep);
     }).join(""), "</div>\n        </div>");
   }).join("") : episodes.length ? '<div class="eplist" data-premiere-list>'.concat(PMT.promotionOrder(episodes).map(function(ep) {
@@ -420,69 +420,10 @@ function mountFonts() {
   link.href = "https://fonts.googleapis.com/css2?family=Onest:wght@300;400&display=swap";
   document.getElementsByTagName("head")[0].appendChild(link);
 }
-function detectCountry(done) {
-  var cached = "";
-  try { cached = sessionStorage.getItem("pmt-country") || ""; } catch (err) {}
-  if (cached) {
-    PMT.geoCountry = cached.toUpperCase();
-    done();
-    return;
-  }
-  var urls = [
-    "https://ipwho.is/?fields=success,country_code",
-    "https://ipapi.co/country/"
-  ];
-  var countries = [];
-  var remaining = urls.length;
-  var finished = false;
-  function finish() {
-    if (finished) return;
-    finished = true;
-    var normalized = countries.map(function(country) {
-      return String(country || "").replace(/^\s+|\s+$/g, "").toUpperCase();
-    });
-    PMT.geoCountry = normalized.indexOf("UA") >= 0 ? "UA" : (normalized[0] || "");
-    if (PMT.geoCountry) {
-      try { sessionStorage.setItem("pmt-country", PMT.geoCountry); } catch (err2) {}
-    }
-    done();
-  }
-  function complete(country) {
-    countries.push(country);
-    remaining -= 1;
-    if (!remaining) finish();
-  }
-  function request(url, json) {
-    var xhr = new XMLHttpRequest();
-    var settled = false;
-    function settle(country) {
-      if (settled) return;
-      settled = true;
-      complete(country);
-    }
-    xhr.onreadystatechange = function() {
-      if (xhr.readyState !== 4) return;
-      if (xhr.status < 200 || xhr.status >= 300) { settle(""); return; }
-      if (!json) { settle(xhr.responseText); return; }
-      try {
-        var result = JSON.parse(xhr.responseText);
-        settle(result && result.success !== false ? result.country_code : "");
-      } catch (err3) { settle(""); }
-    };
-    xhr.onerror = xhr.ontimeout = function() { settle(""); };
-    try {
-      xhr.open("GET", url, true);
-      xhr.timeout = 1800;
-      xhr.send();
-    } catch (err4) { settle(""); }
-  }
-  window.setTimeout(finish, 2200);
-  request(urls[0], true);
-  request(urls[1], false);
-}
 function boot() {
-  detectCountry(function() {
+  PMT.detectCountry(function() {
     mountChrome();
+    PMT.mountVisitorTools();
     mountStatic();
     mountHome();
     mountArchive();

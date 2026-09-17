@@ -10,7 +10,7 @@
   }
   function load(file, done) {
     var script = document.createElement('script'), finished = false;
-    script.src = file + '?v=20260916-geo3';
+    script.src = file + '?v=20260917-region1';
     script.async = false;
     script.onload = script.onreadystatechange = function () {
       if (!finished && (!script.readyState || /loaded|complete/.test(script.readyState))) {
@@ -28,5 +28,9 @@
     font.href = 'https://fonts.googleapis.com/css2?family=Onest:wght@300;400&display=swap';
     head.appendChild(font);
   }
-  load('data.js', function () { load(PMT.legacy ? 'script.legacy.js' : 'script.js'); });
+  load('data.js', function () {
+    load('site-config.js', function () {
+      load('visitor.js', function () { load(PMT.legacy ? 'script.legacy.js' : 'script.js'); });
+    });
+  });
 }(window, document));

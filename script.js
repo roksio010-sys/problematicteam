@@ -192,7 +192,7 @@ function mountHome() {
   const team = document.querySelector('[data-team]');
   if (team) team.innerHTML = TEAM.map((m, i) => `
     <div class="team__row rise" data-d="${Math.min(i, 8) * 50}">
-      <b>${nameOf(m)}</b><span>${T(m.role)}</span>
+      <b>${nameOf(m)}</b><span>${T(PMT.memberRole(m))}</span>
     </div>`).join('');
 }
 
@@ -364,7 +364,7 @@ function mountProject() {
             </div>
             <div class="ep__stage">${playerMarkup(sn.trailer)}</div>
           </div>` : ''}
-          <div class="eplist" data-premiere-list>${PMT.promotionOrder(sn.episodes).map((ep) => epRow(p, ep)).join('')}</div>
+          <div class="eplist" data-premiere-list>${PMT.promotionOrder(PMT.visibleEpisodes(sn)).map((ep) => epRow(p, ep)).join('')}</div>
         </div>`).join('')
       : (episodes.length
           ? `<div class="eplist" data-premiere-list>${PMT.promotionOrder(episodes).map((ep) => epRow(p, ep)).join('')}</div>`
@@ -546,41 +546,11 @@ function mountMotion() {
   window.addEventListener('resize', onResize);
 }
 
-function detectCountry() {
-  let cached = '';
-  try { cached = sessionStorage.getItem('pmt-country') || ''; } catch (err) {}
-  if (cached) {
-    PMT.geoCountry = cached.toUpperCase();
-    return Promise.resolve();
-  }
-  if (!window.fetch) return Promise.resolve();
-  return new Promise((resolve) => {
-    let done = false;
-    const finish = (countries) => {
-      if (done) return;
-      done = true;
-      const list = countries.filter(Boolean).map((country) => String(country).trim().toUpperCase());
-      PMT.geoCountry = list.indexOf('UA') >= 0 ? 'UA' : (list[0] || '');
-      if (PMT.geoCountry) {
-        try { sessionStorage.setItem('pmt-country', PMT.geoCountry); } catch (err) {}
-      }
-      resolve();
-    };
-    window.setTimeout(() => finish([]), 2200);
-    const ipwho = fetch('https://ipwho.is/?fields=success,country_code', { cache: 'no-store' })
-      .then((response) => response.ok ? response.json() : null)
-      .then((result) => result && result.success !== false ? result.country_code : '')
-      .catch(() => '');
-    const ipapi = fetch('https://ipapi.co/country/', { cache: 'no-store' })
-      .then((response) => response.ok ? response.text() : '')
-      .catch(() => '');
-    Promise.all([ipwho, ipapi]).then(finish);
-  });
-}
 function bootModern() {
-  detectCountry().then(() => {
+  PMT.detectCountry(function() {
     mountLangGate();
     mountChrome();
+    PMT.mountVisitorTools();
     mountStatic();
     mountHome();
     mountArchive();
