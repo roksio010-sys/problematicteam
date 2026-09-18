@@ -76,18 +76,6 @@
     var foot = document.querySelector('[data-foot]');
     if (!foot) return;
     var ua = api.getLang() === 'ua';
-    var notice = document.createElement('p');
-    notice.className = 'label foot__privacy';
-    if (origin) {
-      notice.appendChild(document.createTextNode(ua
-        ? 'Журнал безпеки: IP, країна, сторінка та час. Строк зберігання: 7 днів. '
-        : 'Журнал безопасности: IP, страна, страница и время. Срок хранения: 7 дней. '));
-    }
-    var link = document.createElement('a');
-    link.href = 'privacy.html';
-    link.appendChild(document.createTextNode(ua ? 'Конфіденційність' : 'Конфиденциальность'));
-    notice.appendChild(link);
-    foot.appendChild(notice);
     var target = foot.querySelector('.foot__mark');
     if (!target) return;
     var clicks = 0, last = 0;
