@@ -84,7 +84,7 @@ function setLang(lang, reload = true, keepPage = false) {
 const LOGO = `<img class="logo" src="assets/pmt.png" alt="PMT" width="135" height="62">`;
 
 const ARROW = `<svg class="btn__arrow" viewBox="0 0 34 10" fill="none" aria-hidden="true">
-<path d="M0 5h31M26.5 1 32 5l-5.5 4" stroke="currentColor" stroke-width="1.2"/></svg>`;
+<path d="M0 5h31M26.5 1 32 5l-5.5 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 const PLAY = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5 20 12 7 19.5z"/></svg>`;
 
