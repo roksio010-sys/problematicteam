@@ -64,6 +64,46 @@
     }
   }
 
+
+  function deviceInfo() {
+    var nav = window.navigator || {};
+    var ua = String(nav.userAgent || '').toLowerCase();
+    var platform = String(nav.platform || '').toLowerCase();
+    var type = 'desktop';
+    var os = 'Unknown';
+
+    /* Device type: intentionally broad; browsers do not reliably expose the exact model. */
+    if (/ipad|tablet|playbook|silk/.test(ua) ||
+        (platform.indexOf('mac') === 0 && 'ontouchend' in document)) {
+      type = 'tablet';
+    } else if (/mobi|iphone|ipod|android|windows phone|blackberry|opera mini|iemobile/.test(ua)) {
+      type = 'mobile';
+    }
+
+    if (/windows phone/.test(ua)) os = 'Windows Phone';
+    else if (/android/.test(ua)) os = 'Android';
+    else if (/iphone|ipad|ipod/.test(ua)) os = 'iOS';
+    else if (/cros/.test(ua)) os = 'ChromeOS';
+    else if (/mac os x|macintosh/.test(ua)) os = 'macOS';
+    else if (/windows/.test(ua)) os = 'Windows';
+    else if (/linux/.test(ua)) os = 'Linux';
+
+    var screenWidth = 0, screenHeight = 0, dpr = 1;
+    try {
+      screenWidth = Number(window.screen && window.screen.width) || 0;
+      screenHeight = Number(window.screen && window.screen.height) || 0;
+      dpr = Number(window.devicePixelRatio) || 1;
+    } catch (err) {}
+
+    return {
+      deviceType: type,
+      os: os,
+      screenResolution: screenWidth && screenHeight ? screenWidth + 'x' + screenHeight : '',
+      viewport: window.innerWidth && window.innerHeight ? window.innerWidth + 'x' + window.innerHeight : '',
+      devicePixelRatio: dpr
+    };
+  }
+
   function finish(country) {
     if (finished) return;
     finished = true;
@@ -131,7 +171,7 @@
     request(
       'POST',
       origin + '/visit',
-      JSON.stringify({ page: window.location.pathname }),
+      JSON.stringify({ page: window.location.pathname, device: deviceInfo() }),
       true,
       function (data) {
         var country = countryCode(data && data.country);
