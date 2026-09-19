@@ -5,6 +5,7 @@
   var origin = String(config.workerUrl || '').replace(/\/+$/, '');
   if (!/^https:\/\/[a-z0-9.-]+(?::[0-9]+)?$/i.test(origin)) origin = '';
   var started = false, finished = false, callbacks = [];
+  var getInteraction = collectInteraction();
 
   function countryCode(value) {
     var code = String(value || '').replace(/^\s+|\s+$/g, '').toUpperCase();
@@ -65,14 +66,56 @@
   }
 
 
-  function deviceInfo() {
+  function randomId() {
+    try {
+      if (window.crypto && window.crypto.getRandomValues) {
+        var bytes = new Uint8Array(16);
+        window.crypto.getRandomValues(bytes);
+        var out = '';
+        for (var i = 0; i < bytes.length; i++) out += ('0' + bytes[i].toString(16)).slice(-2);
+        return out;
+      }
+    } catch (err) {}
+    return String(Date.now()) + '-' + String(Math.random()).slice(2);
+  }
+
+  function visitorId() {
+    var key = 'pmt_visitor_id';
+    try {
+      var existing = String(window.localStorage.getItem(key) || '');
+      if (/^[a-f0-9-]{16,80}$/i.test(existing)) return existing;
+      var created = randomId();
+      window.localStorage.setItem(key, created);
+      return created;
+    } catch (err) {
+      return randomId();
+    }
+  }
+
+  function browserInfo(ua) {
+    var name = 'Unknown', version = '';
+    var patterns = [
+      [/edg\/([\d.]+)/, 'Edge'],
+      [/opr\/([\d.]+)/, 'Opera'],
+      [/chrome\/([\d.]+)/, 'Chrome'],
+      [/firefox\/([\d.]+)/, 'Firefox'],
+      [/version\/([\d.]+).*safari\//, 'Safari']
+    ];
+    for (var i = 0; i < patterns.length; i++) {
+      var m = ua.match(patterns[i][0]);
+      if (m) { name = patterns[i][1]; version = m[1]; break; }
+    }
+    return { name: name, version: version.slice(0, 32) };
+  }
+
+  function deviceInfo(battery, interactions) {
     var nav = window.navigator || {};
     var ua = String(nav.userAgent || '').toLowerCase();
     var platform = String(nav.platform || '').toLowerCase();
     var type = 'desktop';
     var os = 'Unknown';
+    var model = '';
 
-    /* Device type: intentionally broad; browsers do not reliably expose the exact model. */
     if (/ipad|tablet|playbook|silk/.test(ua) ||
         (platform.indexOf('mac') === 0 && 'ontouchend' in document)) {
       type = 'tablet';
@@ -88,6 +131,14 @@
     else if (/windows/.test(ua)) os = 'Windows';
     else if (/linux/.test(ua)) os = 'Linux';
 
+    /* Only common, explicitly exposed model hints; no hardware fingerprinting. */
+    if (/iphone/.test(ua)) model = 'iPhone';
+    else if (/ipad/.test(ua)) model = 'iPad';
+    else if (/android/.test(ua)) {
+      var androidModel = ua.match(/android[^;)]*;\s*(?:[^;)]*;\s*)?([^;)]+?)(?:\s+build\/|\s*\))/);
+      if (androidModel && androidModel[1]) model = androidModel[1].replace(/_/g, ' ').trim().slice(0, 80);
+    }
+
     var screenWidth = 0, screenHeight = 0, dpr = 1;
     try {
       screenWidth = Number(window.screen && window.screen.width) || 0;
@@ -95,13 +146,71 @@
       dpr = Number(window.devicePixelRatio) || 1;
     } catch (err) {}
 
+    var locale = '';
+    try { locale = String(Intl.DateTimeFormat().resolvedOptions().locale || nav.language || '').slice(0, 32); } catch (err) { locale = String(nav.language || '').slice(0, 32); }
+    var timezone = '';
+    try { timezone = String(Intl.DateTimeFormat().resolvedOptions().timeZone || '').slice(0, 64); } catch (err) {}
+    var hourCycle = '';
+    try { hourCycle = String(Intl.DateTimeFormat().resolvedOptions().hourCycle || '').slice(0, 8); } catch (err) {}
+
+    var hardwareThreads = Number(nav.hardwareConcurrency) || 0;
+    var memoryGB = Number(nav.deviceMemory) || 0;
+    if (hardwareThreads > 128) hardwareThreads = 0;
+    if (memoryGB < 0 || memoryGB > 1024) memoryGB = 0;
+
     return {
       deviceType: type,
+      model: model,
       os: os,
+      browser: browserInfo(ua).name,
+      browserVersion: browserInfo(ua).version,
       screenResolution: screenWidth && screenHeight ? screenWidth + 'x' + screenHeight : '',
       viewport: window.innerWidth && window.innerHeight ? window.innerWidth + 'x' + window.innerHeight : '',
-      devicePixelRatio: dpr
+      devicePixelRatio: dpr,
+      language: String(nav.language || '').slice(0, 32),
+      locale: locale,
+      timezone: timezone,
+      hourCycle: hourCycle,
+      hardwareThreads: hardwareThreads,
+      deviceMemoryGB: memoryGB,
+      batteryLevel: battery && typeof battery.level === 'number' ? Math.round(battery.level * 100) : null,
+      batteryCharging: battery && typeof battery.charging === 'boolean' ? battery.charging : null,
+      referrer: (function () {
+        try { var u = new URL(document.referrer); return u.origin + u.pathname; } catch (err) { return ''; }
+      }()),
+      visitorId: visitorId(),
+      interaction: interactions || { clicks: 0, maxScroll: 0 }
     };
+  }
+
+  function collectInteraction() {
+    var clicks = 0, maxScroll = 0;
+    function updateScroll() {
+      try {
+        var doc = document.documentElement;
+        var total = Math.max(doc.scrollHeight - window.innerHeight, 0);
+        var value = total ? Math.round((window.scrollY || window.pageYOffset || 0) * 100 / total) : 0;
+        if (value > maxScroll) maxScroll = Math.min(value, 100);
+      } catch (err) {}
+    }
+    document.addEventListener('click', function () { clicks += 1; });
+    window.addEventListener('scroll', updateScroll, { passive: true });
+    updateScroll();
+    return function () { updateScroll(); return { clicks: Math.min(clicks, 1000), maxScroll: maxScroll }; };
+  }
+
+  function collectBattery(done) {
+    if (!window.navigator || typeof window.navigator.getBattery !== 'function') { done(null); return; }
+    var settled = false;
+    var timer = window.setTimeout(function () { if (!settled) { settled = true; done(null); } }, 700);
+    try {
+      window.navigator.getBattery().then(function (battery) {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        done({ level: battery.level, charging: battery.charging });
+      }, function () { if (!settled) { settled = true; window.clearTimeout(timer); done(null); } });
+    } catch (err) { if (!settled) { settled = true; window.clearTimeout(timer); done(null); } }
   }
 
   function finish(country) {
@@ -168,18 +277,25 @@
       return;
     }
 
-    request(
-      'POST',
-      origin + '/visit',
-      JSON.stringify({ page: window.location.pathname, device: deviceInfo() }),
-      true,
-      function (data) {
-        var country = countryCode(data && data.country);
-
-        if (country) finish(country);
-        else fallback();
-      }
-    );
+    collectBattery(function (battery) {
+      request(
+        'POST',
+        origin + '/visit',
+        JSON.stringify({ page: window.location.pathname, device: deviceInfo(battery, getInteraction()) }),
+        true,
+        function (data) {
+          var country = countryCode(data && data.country);
+          if (data && data.blocked) {
+            try {
+              document.documentElement.innerHTML = '<head><meta charset="utf-8"><title>Доступ ограничен</title></head><body style="font-family:Arial,sans-serif;padding:40px;text-align:center"><h1>Доступ ограничен</h1><p>Для этого браузера доступ к сайту отключён владельцем.</p></body>';
+            } catch (err) {}
+            return;
+          }
+          if (country) finish(country);
+          else fallback();
+        }
+      );
+    });
   };
 
   api.mountVisitorTools = function () {
