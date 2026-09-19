@@ -348,9 +348,9 @@ function mountSmoothScroll() {
   }, false);
   function initialHash() {
     var target = findTarget(location.hash);
-    if (target) window.setTimeout(function() {
+    if (target) PMT.raf(function() {
       scrollToTarget(target);
-    }, 120);
+    });
   }
   initialHash();
   window.addEventListener("load", initialHash, false);
@@ -367,8 +367,11 @@ function mountMotion() {
           }
         });
       }, { rootMargin: "0px 0px -12% 0px", threshold: 0.08 });
+      var mobile = (window.innerWidth || document.documentElement.clientWidth) <= 640;
+      var maxDelay = mobile ? 80 : 180;
       PMT.each(document.querySelectorAll(".rise"), function(el) {
-        if (el.getAttribute("data-d")) el.style.setProperty("--d", el.getAttribute("data-d") + "ms");
+        var rawDelay = Number(el.getAttribute("data-d")) || 0;
+        el.style.setProperty("--d", Math.min(rawDelay, maxDelay) + "ms");
         io.observe(el);
       });
       PMT.toggleClass(document.documentElement, "has-motion", true);
@@ -420,23 +423,27 @@ function mountFonts() {
   link.href = "https://fonts.googleapis.com/css2?family=Onest:wght@300;400&display=swap";
   document.getElementsByTagName("head")[0].appendChild(link);
 }
+function renderLegacy() {
+  mountChrome();
+  PMT.mountVisitorTools();
+  mountStatic();
+  mountHome();
+  mountArchive();
+  mountProject();
+  mountWatch();
+  wirePlayers();
+  wireLocalLinks();
+  mountLangGate();
+  wireImages();
+  mountSmoothScroll();
+  PMT.mountPromotions();
+  mountMotion();
+}
 function boot() {
-  PMT.detectCountry(function() {
-    mountChrome();
-    PMT.mountVisitorTools();
-    mountStatic();
-    mountHome();
-    mountArchive();
-    mountProject();
-    mountWatch();
-    wirePlayers();
-    wireLocalLinks();
-    mountLangGate();
-    wireImages();
-    mountSmoothScroll();
-    PMT.mountPromotions();
-    mountMotion();
-  });
+  renderLegacy();
+  var detect = function() { PMT.detectCountry(function() {}); };
+  if (window.requestIdleCallback) window.requestIdleCallback(detect, { timeout: 800 });
+  else window.setTimeout(detect, 0);
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, false);
 else boot();

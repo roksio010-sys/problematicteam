@@ -489,7 +489,8 @@ function mountSmoothScroll() {
     const target = document.querySelector(url.hash);
     if (!target) return;
     e.preventDefault();
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const behavior = window.matchMedia('(pointer: coarse)').matches ? 'auto' : 'smooth';
+    target.scrollIntoView({ behavior, block: 'start' });
     history.pushState(null, '', url.hash);
   });
 
@@ -498,8 +499,10 @@ function mountSmoothScroll() {
     const target = document.querySelector(location.hash);
     if (target) {
       window.scrollTo(0, 0);
-      requestAnimationFrame(() => setTimeout(() =>
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120));
+      requestAnimationFrame(() => {
+        const behavior = window.matchMedia('(pointer: coarse)').matches ? 'auto' : 'smooth';
+        target.scrollIntoView({ behavior, block: 'start' });
+      });
     }
   }
 }
@@ -530,8 +533,11 @@ function mountMotion() {
       if (e.isIntersecting) { e.target.classList.add('is-in'); io.unobserve(e.target); }
     });
   }, { rootMargin: '0px 0px -12% 0px', threshold: .08 });
+  const mobile = window.matchMedia('(max-width: 640px)').matches;
+  const maxDelay = mobile ? 80 : 180;
   document.querySelectorAll('.rise').forEach((el) => {
-    if (el.dataset.d) el.style.setProperty('--d', el.dataset.d + 'ms');
+    const rawDelay = Number(el.dataset.d) || 0;
+    el.style.setProperty('--d', Math.min(rawDelay, maxDelay) + 'ms');
     io.observe(el);
   });
 
@@ -554,22 +560,30 @@ function mountMotion() {
   window.addEventListener('resize', onResize);
 }
 
+function renderModern() {
+  mountLangGate();
+  mountChrome();
+  PMT.mountVisitorTools();
+  mountStatic();
+  mountHome();
+  mountArchive();
+  mountProject();
+  mountWatch();
+  wirePlayers();
+  mountSmoothScroll();
+  mountScrollSpeed();
+  PMT.mountPromotions();
+  mountMotion();
+}
+
 function bootModern() {
-  PMT.detectCountry(function() {
-    mountLangGate();
-    mountChrome();
-    PMT.mountVisitorTools();
-    mountStatic();
-    mountHome();
-    mountArchive();
-    mountProject();
-    mountWatch();
-    wirePlayers();
-    mountSmoothScroll();
-    mountScrollSpeed();
-    PMT.mountPromotions();
-    mountMotion();
-  });
+  renderModern();
+  const detect = () => PMT.detectCountry(() => {});
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(detect, { timeout: 800 });
+  } else {
+    window.setTimeout(detect, 0);
+  }
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootModern);
 else bootModern();
