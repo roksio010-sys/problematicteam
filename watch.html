@@ -7,21 +7,32 @@
   <link rel="icon" href="assets/favicon.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preload" as="script" href="data.js?v=20260920-speed1">
-  <link rel="preload" as="script" href="site-config.js?v=20260920-speed1">
-  <link rel="preload" as="script" href="visitor.js?v=20260920-speed1">
-  <link rel="preload" as="script" href="script.js?v=20260920-speed1">
-  <script src="compat.js?v=20260920-speed1"></script>
-  <link rel="stylesheet" href="styles.css?v=20260920-speed1">
-  <link rel="stylesheet" href="legacy.css?v=20260920-speed1">
+  <link rel="preload" as="script" href="data.js?v=20260920-gate1">
+  <link rel="preload" as="script" href="site-config.js?v=20260920-gate1">
+  <link rel="preload" as="script" href="visitor.js?v=20260920-gate1">
+  <link rel="preload" as="script" href="script.js?v=20260920-gate1">
+  <script src="compat.js?v=20260920-gate1"></script>
+  <link rel="stylesheet" href="styles.css?v=20260920-gate1">
+  <link rel="stylesheet" href="legacy.css?v=20260920-gate1">
   <title>Смотреть / Problematic Team</title>
   <meta name="description" content="Серия проекта Problematic Team в плеере: актёры озвучки, перевод, монтаж.">
 </head>
 <body>
   <noscript><div class="noscript" style="padding:20px;background:#140B23;color:#F5F1FB;position:relative;z-index:1001">Для каталога нужен JavaScript. Увімкніть JavaScript для перегляду каталогу.</div></noscript>
+  <div class="gate gate--preload">
+    <div class="gate__box">
+      <img class="logo" src="assets/pmt.png" alt="PMT" width="135" height="62">
+      <h2>Выбери язык<span>Обери мову</span></h2>
+      <div class="gate__row">
+        <button class="btn btn--line" data-lang="ru"><span class="btn__fill"></span><span class="btn__label">Русский</span><span class="btn__arrow" aria-hidden="true">→</span></button>
+        <button class="btn btn--line" data-lang="ua"><span class="btn__fill"></span><span class="btn__label">Українська</span><span class="btn__arrow" aria-hidden="true">→</span></button>
+      </div>
+      <p class="label">Сайт полностью переведён · Сайт повністю перекладено</p>
+    </div>
+  </div>
   <header class="head is-stuck" data-head="inner"></header>
   <main data-watch></main>
   <footer class="foot wrap" data-foot></footer>
-  <script src="loader.js?v=20260920-speed1"></script>
+  <script src="loader.js?v=20260920-gate1"></script>
 </body>
 </html>

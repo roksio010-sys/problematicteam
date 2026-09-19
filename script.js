@@ -102,20 +102,28 @@ const btnBtn = (text, kind, attrs = '') => `
 
 /* ---------- экран выбора языка ---------- */
 function mountLangGate() {
-  if (getLang()) return;
-  const gate = document.createElement('div');
-  gate.className = 'gate';
-  gate.innerHTML = `
-    <div class="gate__box">
-      ${LOGO}
-      <h2>Выбери язык<span>Обери мову</span></h2>
-      <div class="gate__row">
-        <button class="btn btn--line" data-lang="ru"><span class="btn__fill"></span><span class="btn__label">Русский</span>${ARROW}</button>
-        <button class="btn btn--line" data-lang="ua"><span class="btn__fill"></span><span class="btn__label">Українська</span>${ARROW}</button>
-      </div>
-      <p class="label">Сайт полностью переведён · Сайт повністю перекладено</p>
-    </div>`;
-  document.body.appendChild(gate);
+  const preloaded = document.querySelector('.gate--preload');
+  if (getLang()) {
+    if (preloaded) preloaded.remove();
+    return;
+  }
+  const gate = preloaded || document.createElement('div');
+  if (!preloaded) {
+    gate.className = 'gate';
+    gate.innerHTML = `
+      <div class="gate__box">
+        ${LOGO}
+        <h2>Выбери язык<span>Обери мову</span></h2>
+        <div class="gate__row">
+          <button class="btn btn--line" data-lang="ru"><span class="btn__fill"></span><span class="btn__label">Русский</span>${ARROW}</button>
+          <button class="btn btn--line" data-lang="ua"><span class="btn__fill"></span><span class="btn__label">Українська</span>${ARROW}</button>
+        </div>
+        <p class="label">Сайт полностью переведён · Сайт повністю перекладено</p>
+      </div>`;
+    document.body.appendChild(gate);
+  } else {
+    gate.classList.remove('gate--preload');
+  }
   document.documentElement.classList.add('is-locked');
   gate.querySelectorAll('[data-lang]').forEach((b) => {
     b.addEventListener('click', () => setLang(b.dataset.lang, true, true));
