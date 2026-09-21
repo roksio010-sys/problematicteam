@@ -744,7 +744,7 @@ var PROJECTS_RU = [
       ["Основа", "The Amazing World of Gumball"],
       ["Качество", "1080p"],
       ["Возраст", "12+"],
-      ["Сезон", "1 сезон / 3 эпизода"]
+      ["Сезон", "1 сезон / 4 эпизода"]
     ],
     cast: [],
     episodes: [
@@ -768,6 +768,13 @@ var PROJECTS_RU = [
         kinescope: "sgfUtSuTYEXtyfKJGzYtjt",
         poster: CDN + "tild3536-3735-4531-a530-643534393435/photo_2025-08-04_23-.jpg",
         credits: null
+      },
+      {
+        n: "4 эпизод",
+        title: "В РАЗРАБОТКЕ",
+        kinescope: "",
+        poster: "assets/posters/fangumball-4.jpeg",
+        credits: {}
       }
     ]
   },
