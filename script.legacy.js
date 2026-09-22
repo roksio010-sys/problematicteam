@@ -138,6 +138,14 @@ function mountStatic() {
   var t = document.querySelector("[data-title]");
   if (t) document.title = U(t.getAttribute("data-title"));
 }
+function mountTeam() {
+  var team = document.querySelector("[data-team]");
+  if (!team) return;
+  team.innerHTML = TEAM.map(function(m, i) {
+    return '\n    <div class="team__row rise" data-d="'.concat(Math.min(i, 8) * 50, '">\n      <b>').concat(nameOf(m), "</b><span>").concat(T(PMT.memberRole(m)), "</span>\n    </div>");
+  }).join("");
+  PMT.each(team.querySelectorAll('.rise'), function(el) { PMT.toggleClass(el, 'is-in', true); });
+}
 function mountHome() {
   var why = document.querySelector("[data-why]");
   if (why) why.innerHTML = WHY.map(function(w, i) {
@@ -147,10 +155,7 @@ function mountHome() {
   if (list) list.innerHTML = PMT.promotionOrder(PROJECTS).map(function(p, i) {
     return '\n    <a class="prow rise" data-d="'.concat(i * 50, '" ').concat(PMT.promotionAttrs(p, PROJECTS.indexOf(p)), ' href="project.html?p=').concat(p.id, '">\n      <span class="num prow__num">').concat(nn(i), '</span>\n      <div class="prow__media"><div class="premiere-cover"><img src="').concat(p.poster, '" alt="').concat(plain(T(p.titlePlain)), '" loading="lazy">').concat(PMT.promotionBadge(p), '</div></div>\n      <div class="prow__body">\n        <span class="label label--accent">').concat(T(p.kind), "</span>\n        <h3>").concat(T(p.title), '</h3>\n        <div class="prow__meta">\n          <span class="label">').concat(metaFirst(p), "</span>\n          ").concat(countLabel(p) ? '<span class="label">'.concat(countLabel(p), "</span>") : "", "\n        </div>\n      </div>\n    </a>");
   }).join("");
-  var team = document.querySelector("[data-team]");
-  if (team) team.innerHTML = TEAM.map(function(m, i) {
-    return '\n    <div class="team__row rise" data-d="'.concat(Math.min(i, 8) * 50, '">\n      <b>').concat(nameOf(m), "</b><span>").concat(T(PMT.memberRole(m)), "</span>\n    </div>");
-  }).join("");
+  mountTeam();
 }
 function mountArchive() {
   var grid = document.querySelector("[data-grid]");
@@ -443,19 +448,32 @@ function refreshRegionSensitive() {
   var country = String(PMT.geoCountry || '').toUpperCase();
   if (!/^[A-Z]{2}$/.test(country) || country === 'XX' || country === 'T1') return;
   if (country === 'UA') {
-    if (document.querySelector('[data-team]')) {
-      mountHome();
-      mountMotion();
-    }
+    mountTeam();
     return;
   }
-  if (document.querySelector('[data-project]')) {
-    mountProject();
-    mountMotion();
+  var projectRoot = document.querySelector('[data-project]');
+  if (projectRoot) {
+    var id = PMT.query().get('p') || '';
+    var project = findProject(id);
+    var episodes = project && project.episodes || [];
+    var hasRestrictedEpisode = PMT.find(episodes, function(ep) { return ep.kinescope === PMT.restrictedEpisodeId; });
+    var list = projectRoot.querySelector('.eplist[data-premiere-list]');
+    if (hasRestrictedEpisode && list) {
+      list.innerHTML = PMT.promotionOrder(PMT.visibleEpisodes(project)).map(function(ep) { return epRow(project, ep); }).join('');
+      PMT.each(list.querySelectorAll('.rise'), function(el) { PMT.toggleClass(el, 'is-in', true); });
+      wirePlayers(projectRoot);
+    }
   }
-  if (document.querySelector('[data-watch]')) {
-    mountWatch();
-    mountMotion();
+  var watchRoot = document.querySelector('[data-watch]');
+  if (watchRoot) {
+    var watchProject = findProject(PMT.query().get('p'));
+    var requested = Math.max(parseInt(PMT.query().get('e') || '1', 10) || 1, 1);
+    var watchEpisodes = watchProject && watchProject.episodes || [];
+    var episode = watchEpisodes[Math.min(requested, watchEpisodes.length) - 1];
+    if (episode && episode.kinescope === PMT.restrictedEpisodeId) {
+      mountWatch();
+      mountMotion();
+    }
   }
 }
 function boot() {

@@ -173,6 +173,16 @@ function mountStatic() {
 }
 
 /* ---------- главная ---------- */
+function mountTeam() {
+  const team = document.querySelector('[data-team]');
+  if (!team) return;
+  team.innerHTML = TEAM.map((m, i) => `
+    <div class="team__row rise" data-d="${Math.min(i, 8) * 50}">
+      <b>${nameOf(m)}</b><span>${T(PMT.memberRole(m))}</span>
+    </div>`).join('');
+  team.querySelectorAll('.rise').forEach((el) => el.classList.add('is-in'));
+}
+
 function mountHome() {
   const why = document.querySelector('[data-why]');
   if (why) why.innerHTML = WHY.map((w, i) => `
@@ -197,11 +207,7 @@ function mountHome() {
       </div>
     </a>`).join('');
 
-  const team = document.querySelector('[data-team]');
-  if (team) team.innerHTML = TEAM.map((m, i) => `
-    <div class="team__row rise" data-d="${Math.min(i, 8) * 50}">
-      <b>${nameOf(m)}</b><span>${T(PMT.memberRole(m))}</span>
-    </div>`).join('');
+  mountTeam();
 }
 
 /* ---------- архив проектов ---------- */
@@ -580,19 +586,31 @@ function refreshRegionSensitive() {
   const country = String(PMT.geoCountry || '').toUpperCase();
   if (!/^[A-Z]{2}$/.test(country) || country === 'XX' || country === 'T1') return;
   if (country === 'UA') {
-    if (document.querySelector('[data-team]')) {
-      mountHome();
-      mountMotion();
-    }
+    mountTeam();
     return;
   }
-  if (document.querySelector('[data-project]')) {
-    mountProject();
-    mountMotion();
+  const projectRoot = document.querySelector('[data-project]');
+  if (projectRoot) {
+    const id = new URLSearchParams(location.search).get('p') || '';
+    const project = findProject(id);
+    const hasRestrictedEpisode = project && (project.episodes || []).some((ep) => ep.kinescope === PMT.restrictedEpisodeId);
+    const list = projectRoot.querySelector('.eplist[data-premiere-list]');
+    if (hasRestrictedEpisode && list) {
+      list.innerHTML = PMT.promotionOrder(PMT.visibleEpisodes(project)).map((ep) => epRow(project, ep)).join('');
+      list.querySelectorAll('.rise').forEach((el) => el.classList.add('is-in'));
+      wirePlayers(projectRoot);
+    }
   }
-  if (document.querySelector('[data-watch]')) {
-    mountWatch();
-    mountMotion();
+  const watchRoot = document.querySelector('[data-watch]');
+  if (watchRoot) {
+    const q = new URLSearchParams(location.search);
+    const project = findProject(q.get('p'));
+    const requested = Math.max(parseInt(q.get('e') || '1', 10) || 1, 1);
+    const episode = project && project.episodes && project.episodes[Math.min(requested, project.episodes.length) - 1];
+    if (episode && episode.kinescope === PMT.restrictedEpisodeId) {
+      mountWatch();
+      mountMotion();
+    }
   }
 }
 
