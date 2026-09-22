@@ -439,9 +439,28 @@ function renderLegacy() {
   PMT.mountPromotions();
   mountMotion();
 }
+function refreshRegionSensitive() {
+  var country = String(PMT.geoCountry || '').toUpperCase();
+  if (!/^[A-Z]{2}$/.test(country) || country === 'XX' || country === 'T1') return;
+  if (country === 'UA') {
+    if (document.querySelector('[data-team]')) {
+      mountHome();
+      mountMotion();
+    }
+    return;
+  }
+  if (document.querySelector('[data-project]')) {
+    mountProject();
+    mountMotion();
+  }
+  if (document.querySelector('[data-watch]')) {
+    mountWatch();
+    mountMotion();
+  }
+}
 function boot() {
   renderLegacy();
-  var detect = function() { PMT.detectCountry(function() {}); };
+  var detect = function() { PMT.detectCountry(refreshRegionSensitive); };
   if (window.requestIdleCallback) window.requestIdleCallback(detect, { timeout: 800 });
   else window.setTimeout(detect, 0);
 }

@@ -1352,7 +1352,8 @@ PMT.visibleEpisodes = function(project) {
   return (project.episodes || []).filter(function(ep) { return !PMT.isRestrictedEpisode(ep); });
 };
 PMT.memberRole = function(member) {
-  return member.roleUkraine && PMT.regionRestricted() ? member.roleUkraine : member.role;
+  var country = String(PMT.geoCountry || "").toUpperCase();
+  return member.roleUkraine && country === "UA" ? member.roleUkraine : member.role;
 };
 
 var PMT_LANG = PMT.getLang() === "ua" ? "ua" : "ru";
