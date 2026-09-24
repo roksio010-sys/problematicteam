@@ -128,7 +128,7 @@ function mountChrome() {
   }
   var foot = document.querySelector("[data-foot]");
   if (foot) {
-    foot.innerHTML = '\n      <div class="foot__mark">'.concat(LOGO, '<span class="label">Problematic&nbsp;Team / ').concat(U("archiveShort"), '</span></div>\n      <p class="label foot__note">').concat(U("closed"), '</p>\n      <span class="label">').concat(U("credits"), "</span>");
+    foot.innerHTML = '\n      <div class="foot__mark">'.concat(LOGO, '<span class="label">Problematic&nbsp;Team / ').concat(U("projectLabelShort"), '</span></div>\n      <p class="label foot__note">').concat(U("siteNote"), '</p>\n      <span class="label">').concat(U("credits"), "</span>");
   }
 }
 function mountStatic() {
@@ -255,7 +255,7 @@ function mountProject() {
     }).join(""), "</div>\n        </div>");
   }).join("") : episodes.length ? '<div class="eplist" data-premiere-list>'.concat(PMT.promotionOrder(episodes).map(function(ep) {
     return epRow(p, ep);
-  }).join(""), "</div>") : '<p class="lead">'.concat(U("noEpisodes"), "</p>"), '\n    </section>\n\n    <section class="section wrap">\n      <div class="statement">\n        <div>\n          <span class="label label--accent rise">').concat(U("otherLabel"), '</span>\n          <h2 class="rise" data-d="100">').concat(U("otherH"), '</h2>\n        </div>\n        <p class="lead rise" data-d="200">').concat(U("closed"), '</p>\n      </div>\n      <div class="plist mt-l" data-premiere-list>\n        ').concat(PMT.promotionOrder(PROJECTS).filter(function(o) {
+  }).join(""), "</div>") : '<p class="lead">'.concat(U("noEpisodes"), "</p>"), '\n    </section>\n\n    <section class="section wrap">\n      <div class="statement">\n        <div>\n          <span class="label label--accent rise">').concat(U("otherLabel"), '</span>\n          <h2 class="rise" data-d="100">').concat(U("otherH"), '</h2>\n        </div>\n        <p class="lead rise" data-d="200">').concat(U("siteNote"), '</p>\n      </div>\n      <div class="plist mt-l" data-premiere-list>\n        ').concat(PMT.promotionOrder(PROJECTS).filter(function(o) {
     return o.id !== p.id;
   }).map(function(o, i) {
     return '\n          <a class="prow rise" data-d="'.concat(i * 50, '" ').concat(PMT.promotionAttrs(o, PROJECTS.indexOf(o)), ' href="project.html?p=').concat(o.id, '">\n            <span class="num prow__num">').concat(nn(PROJECTS.indexOf(o)), '</span>\n            <div class="prow__media"><div class="premiere-cover"><img src="').concat(o.poster, '" alt="').concat(plain(T(o.titlePlain)), '" loading="lazy">').concat(PMT.promotionBadge(o), '</div></div>\n            <div class="prow__body">\n              <span class="label label--accent">').concat(T(o.kind), "</span>\n              <h3>").concat(T(o.title), "</h3>\n            </div>\n          </a>");
@@ -323,7 +323,7 @@ function mountWatch() {
     return '\n          <div class="credits__col rise" data-d="'.concat(i * 50, '">\n            <span class="label">').concat(T(credit[0]), "</span>\n            <ul>").concat(credit[1].map(function(row) {
       return "<li>".concat(row[1] ? "".concat(T(row[0]), " <span>— ").concat(row[1], "</span>") : T(row[0]), "</li>");
     }).join(""), "</ul>\n          </div>");
-  }).join(""), '\n      </div>\n      <div class="pager">\n        ').concat(prev ? btn(U("prevEpisode"), "watch.html?p=".concat(p.id, "&e=").concat(prev), "bare btn--back") : '<span class="label">'.concat(U("firstEpisode"), "</span>"), "\n        ").concat(btn(U("allEpisodes"), "project.html?p=".concat(p.id, "#episodes"), "bare"), "\n        ").concat(next ? btn(U("nextEpisode"), "watch.html?p=".concat(p.id, "&e=").concat(next), "bare") : '<span class="label">'.concat(U("noMore"), "</span>"), "\n      </div>\n    </section>");
+  }).join(""), '\n      </div>\n      <div class="pager">\n        ').concat(prev ? btn(U("prevEpisode"), "watch.html?p=".concat(p.id, "&e=").concat(prev), "bare btn--back") : '<span class="label">'.concat(U("firstEpisode"), "</span>"), "\n        ").concat(btn(U("allEpisodes"), "project.html?p=".concat(p.id, "#episodes"), "bare"), "\n        ").concat(next ? btn(U("nextEpisode"), "watch.html?p=".concat(p.id, "&e=").concat(next), "bare") : '<span class="label">'.concat(U("lastEpisode"), "</span>"), "\n      </div>\n    </section>");
   wirePlayers(root);
 }
 function mountSmoothScroll() {

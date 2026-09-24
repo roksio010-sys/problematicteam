@@ -12,6 +12,48 @@
     return /^[A-Z]{2}$/.test(code) && code !== 'XX' ? code : '';
   }
 
+  function browserSuggestsUkraine() {
+    var nav = window.navigator || {};
+    var locales = [];
+    var timezone = '';
+    var values = nav.languages;
+    var i, j, parts;
+
+    function addLocale(value) {
+      if (value) locales.push(String(value).replace(/_/g, '-'));
+    }
+
+    addLocale(nav.language);
+    addLocale(nav.userLanguage);
+    addLocale(nav.browserLanguage);
+    addLocale(nav.systemLanguage);
+
+    if (values && typeof values.length === 'number') {
+      for (i = 0; i < values.length; i++) addLocale(values[i]);
+    }
+
+    try {
+      if (window.Intl && window.Intl.DateTimeFormat) {
+        var options = window.Intl.DateTimeFormat().resolvedOptions();
+        addLocale(options.locale);
+        timezone = String(options.timeZone || '');
+      }
+    } catch (err) {}
+
+    for (i = 0; i < locales.length; i++) {
+      parts = locales[i].toLowerCase().split('-');
+      if (parts[0] === 'uk' || parts[0] === 'ua') return true;
+      for (j = 1; j < parts.length && parts[j].length > 1; j++) {
+        if (parts[j] === 'ua') return true;
+      }
+    }
+
+    return /^Europe\/(?:Kyiv|Kiev|Simferopol|Uzhgorod|Zaporozhye)$/i.test(timezone);
+  }
+
+  var localUkraine = browserSuggestsUkraine();
+  if (localUkraine) api.geoCountry = 'UA';
+
   function request(method, url, body, json, done) {
     var xhr, settled = false, timer;
 
@@ -216,7 +258,8 @@
   function finish(country) {
     if (finished) return;
     finished = true;
-    api.geoCountry = countryCode(country);
+    var detected = countryCode(country);
+    api.geoCountry = (localUkraine || detected === 'UA') ? 'UA' : detected;
 
     var pending = callbacks;
     callbacks = [];

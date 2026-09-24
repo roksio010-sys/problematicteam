@@ -159,8 +159,8 @@ function mountChrome() {
   const foot = document.querySelector('[data-foot]');
   if (foot) {
     foot.innerHTML = `
-      <div class="foot__mark">${LOGO}<span class="label">Problematic&nbsp;Team / ${U('archiveShort')}</span></div>
-      <p class="label foot__note">${U('closed')}</p>
+      <div class="foot__mark">${LOGO}<span class="label">Problematic&nbsp;Team / ${U('projectLabelShort')}</span></div>
+      <p class="label foot__note">${U('siteNote')}</p>
       <span class="label">${U('credits')}</span>`;
   }
 }
@@ -391,7 +391,7 @@ function mountProject() {
           <span class="label label--accent rise">${U('otherLabel')}</span>
           <h2 class="rise" data-d="100">${U('otherH')}</h2>
         </div>
-        <p class="lead rise" data-d="200">${U('closed')}</p>
+        <p class="lead rise" data-d="200">${U('siteNote')}</p>
       </div>
       <div class="plist mt-l" data-premiere-list>
         ${PMT.promotionOrder(PROJECTS).filter((o) => o.id !== p.id).map((o, i) => `
@@ -479,7 +479,7 @@ function mountWatch() {
       <div class="pager">
         ${prev ? btn(U('prevEpisode'), `watch.html?p=${p.id}&e=${prev}`, 'bare btn--back') : `<span class="label">${U('firstEpisode')}</span>`}
         ${btn(U('allEpisodes'), `project.html?p=${p.id}#episodes`, 'bare')}
-        ${next ? btn(U('nextEpisode'), `watch.html?p=${p.id}&e=${next}`, 'bare') : `<span class="label">${U('noMore')}</span>`}
+        ${next ? btn(U('nextEpisode'), `watch.html?p=${p.id}&e=${next}`, 'bare') : `<span class="label">${U('lastEpisode')}</span>`}
       </div>
     </section>`;
   wirePlayers(root);
