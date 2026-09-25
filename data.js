@@ -771,7 +771,7 @@ var PROJECTS_RU = [
       },
       {
         n: "4 эпизод",
-        title: "В РАЗРАБОТКЕ",
+        title: "ШКАТУЛКА",
         kinescope: "",
         poster: "assets/posters/fangumball-4.jpeg?v=20260924-cover1",
         credits: {}
