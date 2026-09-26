@@ -308,20 +308,24 @@ async function handle(request, env) {
     const raw = url.searchParams.get('before') || '';
     const before = raw ? Number(raw) : Number.MAX_SAFE_INTEGER;
     if (!Number.isSafeInteger(before) || before < 1) return reply({ error: 'invalid-cursor' }, 400);
-    const result = await env.DB.prepare(`SELECT r.session_id, r.visitor_id,
-        MIN(r.event_at) AS first_at, MAX(r.event_at) AS last_at,
-        SUM(CASE WHEN r.kind = 'click' THEN 1 ELSE 0 END) AS clicks,
-        SUM(CASE WHEN r.kind = 'scroll' THEN 1 ELSE 0 END) AS scrolls,
-        COUNT(DISTINCT r.page) AS pages,
-        GROUP_CONCAT(DISTINCT r.page) AS page_list,
-        (SELECT COUNT(*) FROM rec_shots s WHERE s.session_id = r.session_id) AS shots,
-        (SELECT v.ip FROM visits v WHERE v.visitor_id = r.visitor_id ORDER BY v.id DESC LIMIT 1) AS ip,
-        (SELECT v.country FROM visits v WHERE v.visitor_id = r.visitor_id ORDER BY v.id DESC LIMIT 1) AS country,
+    const result = await env.DB.prepare(`SELECT g.session_id, g.visitor_id,
+        MIN(g.at) AS first_at, MAX(g.at) AS last_at,
+        SUM(CASE WHEN g.kind = 'click' THEN 1 ELSE 0 END) AS clicks,
+        SUM(CASE WHEN g.kind = 'scroll' THEN 1 ELSE 0 END) AS scrolls,
+        COUNT(DISTINCT g.page) AS pages,
+        GROUP_CONCAT(DISTINCT g.page) AS page_list,
+        (SELECT COUNT(*) FROM rec_shots s WHERE s.session_id = g.session_id) AS shots,
+        (SELECT v.ip FROM visits v WHERE v.visitor_id = g.visitor_id ORDER BY v.id DESC LIMIT 1) AS ip,
+        (SELECT v.country FROM visits v WHERE v.visitor_id = g.visitor_id ORDER BY v.id DESC LIMIT 1) AS country,
         CASE WHEN b.visitor_id IS NULL THEN 0 ELSE 1 END AS blocked
-      FROM rec_events r
-      LEFT JOIN blocked_visitors b ON b.visitor_id = r.visitor_id
-      GROUP BY r.session_id
-      HAVING MAX(r.event_at) < ?
+      FROM (
+        SELECT session_id, visitor_id, event_at AS at, kind, page FROM rec_events
+        UNION ALL
+        SELECT session_id, visitor_id, taken_at AS at, '' AS kind, page FROM rec_shots
+      ) g
+      LEFT JOIN blocked_visitors b ON b.visitor_id = g.visitor_id
+      GROUP BY g.session_id
+      HAVING MAX(g.at) < ?
       ORDER BY last_at DESC LIMIT 51`)
       .bind(before).all();
     const rows = result.results || [];
