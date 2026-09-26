@@ -128,7 +128,7 @@ function mountChrome() {
   }
   var foot = document.querySelector("[data-foot]");
   if (foot) {
-    foot.innerHTML = '\n      <div class="foot__mark">'.concat(LOGO, '<span class="label">Problematic&nbsp;Team / ').concat(U("projectLabelShort"), '</span></div>\n      <p class="label foot__note">').concat(U("siteNote"), '</p>\n      <span class="label">').concat(U("credits"), "</span>");
+    foot.innerHTML = '\n      <div class="foot__mark">'.concat(LOGO, '<span class="label">Problematic&nbsp;Team / ').concat(U("projectLabelShort"), '</span></div>\n      <p class="label foot__note">').concat(U("siteNote"), '</p>\n      <p class="label foot__privacy"><a href="privacy.html">').concat(U("privacyLink"), '</a></p>\n      <span class="label">').concat(U("credits"), "</span>");
   }
 }
 function mountStatic() {

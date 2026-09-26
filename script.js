@@ -161,6 +161,7 @@ function mountChrome() {
     foot.innerHTML = `
       <div class="foot__mark">${LOGO}<span class="label">Problematic&nbsp;Team / ${U('projectLabelShort')}</span></div>
       <p class="label foot__note">${U('siteNote')}</p>
+      <p class="label foot__privacy"><a href="privacy.html">${U('privacyLink')}</a></p>
       <span class="label">${U('credits')}</span>`;
   }
 }

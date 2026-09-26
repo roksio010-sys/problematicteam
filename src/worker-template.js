@@ -119,7 +119,9 @@ async function cleanup(env, now = Date.now()) {
   if (!env.DB) return;
   await env.DB.batch([
     env.DB.prepare('DELETE FROM sessions WHERE expires_at <= ?').bind(now),
-    env.DB.prepare('DELETE FROM rate_limits WHERE expires_at <= ?').bind(now)
+    env.DB.prepare('DELETE FROM rate_limits WHERE expires_at <= ?').bind(now),
+    env.DB.prepare('DELETE FROM rec_shots WHERE taken_at <= ?').bind(now - 14 * 24 * 60 * 60 * 1000),
+    env.DB.prepare('DELETE FROM rec_events WHERE event_at <= ?').bind(now - 30 * 24 * 60 * 60 * 1000)
   ]);
 }
 async function handle(request, env) {
