@@ -429,7 +429,7 @@
         return;
       }
       var script = document.createElement('script');
-      script.src = 'html2canvas.min.js?v=20260926-rec1';
+      script.src = 'html2canvas.min.js?v=20260926-rec2';
       script.setAttribute('data-rec-lib', '1');
       script.async = true;
       script.onload = function () { done(); };
@@ -614,7 +614,12 @@
       var step = scroll[1] >= 95 ? 4 : scroll[1] >= 60 ? 3 : scroll[1] >= 30 ? 2 : scroll[1] >= 5 ? 1 : 0;
       if (step > state.milestone) {
         state.milestone = step;
-        takeShot('scroll', null);
+        var record = {
+          kind: 'scroll', t: new Date().getTime() - startedAt,
+          sy: scroll[0], sp: scroll[1], tg: '', lb: ''
+        };
+        state.events.push(record);
+        takeShot('scroll', record);
       }
     }, { passive: true, capture: false });
 
