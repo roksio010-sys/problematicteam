@@ -180,10 +180,13 @@ async function handle(request, env) {
     try {
       const key = await sign('visit-rate:' + ip, env.ADMIN_PASSWORD);
       if (!(await allowRate(env.DB, key, 120, 60000, now))) return reply({ country: code, logged: false }, 200, undefined, headers);
+      const fp = data.fp && typeof data.fp === 'object' && !Array.isArray(data.fp) ? data.fp : null;
+      const fpHash = fp && typeof fp.hash === 'string' && /^[a-f0-9]{16,64}$/i.test(fp.hash) ? fp.hash.toLowerCase() : '';
+      const fpJson = fp && typeof fp.data === 'string' ? fp.data.slice(0, 4000) : '';
       await env.DB.prepare(`INSERT INTO visits
-        (visited_at, ip, country, site_origin, page, device_type, device_model, os, browser, browser_version, screen_resolution, device_pixel_ratio, language, locale, timezone, hour_cycle, hardware_threads, device_memory_gb, battery_level, battery_charging, referrer, visitor_id, click_count, max_scroll)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` )
-        .bind(now, ip, code, origin, page, deviceType, deviceModel, os, browser, browserVersion, screenResolution, devicePixelRatio, language, locale, timezone, hourCycle, hardwareThreads, memoryValue, batteryValue, batteryCharging, referrer, visitorId, clicks, scroll).run();
+        (visited_at, ip, country, site_origin, page, device_type, device_model, os, browser, browser_version, screen_resolution, device_pixel_ratio, language, locale, timezone, hour_cycle, hardware_threads, device_memory_gb, battery_level, battery_charging, referrer, visitor_id, click_count, max_scroll, fp_hash, fp_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` )
+        .bind(now, ip, code, origin, page, deviceType, deviceModel, os, browser, browserVersion, screenResolution, devicePixelRatio, language, locale, timezone, hourCycle, hardwareThreads, memoryValue, batteryValue, batteryCharging, referrer, visitorId, clicks, scroll, fpHash, fpJson).run();
       return reply({ country: code, logged: true }, 200, undefined, headers);
     } catch {
       // Country-based presentation must not depend on successful database writes.
@@ -295,7 +298,7 @@ async function handle(request, env) {
     const raw = url.searchParams.get('before') || '';
     const before = raw ? Number(raw) : Number.MAX_SAFE_INTEGER;
     if (!Number.isSafeInteger(before) || before < 1) return reply({ error: 'invalid-cursor' }, 400);
-    const result = await env.DB.prepare(`SELECT v.id, v.visited_at, v.ip, v.country, v.site_origin, v.page, v.device_type, v.device_model, v.os, v.browser, v.browser_version, v.screen_resolution, v.device_pixel_ratio, v.language, v.locale, v.timezone, v.hour_cycle, v.hardware_threads, v.device_memory_gb, v.battery_level, v.battery_charging, v.referrer, v.visitor_id, v.click_count, v.max_scroll, CASE WHEN b.visitor_id IS NULL THEN 0 ELSE 1 END AS blocked
+    const result = await env.DB.prepare(`SELECT v.id, v.visited_at, v.ip, v.country, v.site_origin, v.page, v.device_type, v.device_model, v.os, v.browser, v.browser_version, v.screen_resolution, v.device_pixel_ratio, v.language, v.locale, v.timezone, v.hour_cycle, v.hardware_threads, v.device_memory_gb, v.battery_level, v.battery_charging, v.referrer, v.visitor_id, v.click_count, v.max_scroll, v.fp_hash, v.fp_json, CASE WHEN b.visitor_id IS NULL THEN 0 ELSE 1 END AS blocked
       FROM visits v LEFT JOIN blocked_visitors b ON b.visitor_id = v.visitor_id
       WHERE v.id < ? ORDER BY v.id DESC LIMIT 101`)
       .bind(before).all();

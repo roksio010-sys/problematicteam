@@ -242,6 +242,182 @@
     return function () { updateScroll(); return { clicks: Math.min(clicks, 1000), maxScroll: maxScroll }; };
   }
 
+  var fpState = null;
+
+  function hashStr(text) {
+    var hash = 0x811c9dc5;
+    for (var i = 0; i < text.length; i++) {
+      hash ^= text.charCodeAt(i);
+      hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    return ('0000000' + hash.toString(16)).slice(-8);
+  }
+
+  function collectFp(done) {
+    var parts = {};
+    var settled = false;
+    var pending = 0;
+    var timer = window.setTimeout(function () { complete(); }, 1600);
+
+    function complete() {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      var json = '';
+      try { json = JSON.stringify(parts) || ''; } catch (err) {}
+      if (json.length > 3500) json = json.slice(0, 3500);
+      var seed = '';
+      for (var key in parts) { if (Object.prototype.hasOwnProperty.call(parts, key)) seed += key + '=' + parts[key] + ';'; }
+      var simple = hashStr(seed);
+      try {
+        if (window.crypto && window.crypto.subtle && window.TextEncoder) {
+          window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(seed)).then(function (buf) {
+            var arr = new Uint8Array(buf);
+            var hex = '';
+            for (var i = 0; i < 16; i++) hex += ('0' + arr[i].toString(16)).slice(-2);
+            done({ hash: hex, data: json });
+          }, function () { done({ hash: simple, data: json }); });
+          return;
+        }
+      } catch (err) {}
+      done({ hash: simple, data: json });
+    }
+
+    function task() {
+      if (settled) return function () {};
+      pending += 1;
+      return function (extra) {
+        if (settled) return;
+        pending -= 1;
+        if (extra) { for (var k in extra) { if (Object.prototype.hasOwnProperty.call(extra, k)) parts[k] = extra[k]; } }
+        if (!pending) complete();
+      };
+    }
+
+    try { parts.ua = navigator.userAgent || ''; } catch (err) {}
+    try { parts.lang = navigator.language || ''; } catch (err) {}
+    try { parts.tz = (Intl.DateTimeFormat().resolvedOptions() || {}).timeZone || ''; } catch (err) {}
+    try { parts.screen = [window.screen.width, window.screen.height, window.screen.colorDepth].join('x'); } catch (err) {}
+    try { parts.dpr = window.devicePixelRatio || 0; } catch (err) {}
+    try { parts.cpu = navigator.hardwareConcurrency || 0; } catch (err) {}
+    try { parts.ram = navigator.deviceMemory || 0; } catch (err) {}
+    try { parts.touch = navigator.maxTouchPoints || 0; } catch (err) {}
+    try { parts.platform = navigator.platform || ''; } catch (err) {}
+
+    try {
+      var canvasEl = document.createElement('canvas');
+      canvasEl.width = 240; canvasEl.height = 60;
+      var ctx2 = canvasEl.getContext('2d');
+      if (ctx2) {
+        ctx2.textBaseline = 'top';
+        ctx2.font = '16px Arial';
+        ctx2.fillStyle = '#f60';
+        ctx2.fillRect(0, 0, 100, 20);
+        ctx2.fillStyle = '#069';
+        ctx2.fillText('PMT fingerprint 2026', 2, 15);
+        ctx2.fillStyle = 'rgba(102,204,0,0.7)';
+        ctx2.fillText('PMT fingerprint 2026', 4, 25);
+        parts.canvas = hashStr(canvasEl.toDataURL());
+      }
+    } catch (err) {}
+
+    try {
+      var glCanvas = document.createElement('canvas');
+      var gl = glCanvas.getContext('webgl') || glCanvas.getContext('experimental-webgl');
+      if (gl) {
+        var dbg = gl.getExtension('WEBGL_debug_renderer_info');
+        parts.gpu = dbg
+          ? String(gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL)) + ' / ' + String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL))
+          : String(gl.getParameter(gl.VENDOR)) + ' / ' + String(gl.getParameter(gl.RENDERER));
+        glCanvas.width = 160; glCanvas.height = 80;
+        gl.clearColor(0.4, 0.7, 0.9, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        var px = new Uint8Array(16 * 16 * 4);
+        gl.readPixels(0, 0, 16, 16, gl.RGBA, gl.UNSIGNED_BYTE, px);
+        var bin = '';
+        for (var pi = 0; pi < px.length; pi++) bin += String.fromCharCode(px[pi]);
+        parts.webgl = hashStr(bin);
+      }
+    } catch (err) {}
+
+    try {
+      if (document.body) {
+        var base = ['monospace', 'sans-serif', 'serif'];
+        var fonts = ['arial', 'verdana', 'tahoma', 'georgia', 'courier new', 'times new roman', 'segoe ui', 'roboto', 'helvetica', 'calibri', 'comic sans ms', 'impact', 'trebuchet ms'];
+        var span = document.createElement('span');
+        span.style.cssText = 'position:absolute;left:-9999px;top:-9999px;font-size:48px;visibility:hidden;white-space:nowrap';
+        span.textContent = 'PMTmmmmmmmmmmlli';
+        document.body.appendChild(span);
+        var found = [];
+        for (var fi = 0; fi < fonts.length; fi++) {
+          var matched = false;
+          for (var bi = 0; bi < base.length && !matched; bi++) {
+            span.style.fontFamily = '"' + fonts[fi] + '",' + base[bi];
+            var w1 = span.offsetWidth;
+            span.style.fontFamily = base[bi];
+            var w2 = span.offsetWidth;
+            if (w1 !== w2) matched = true;
+          }
+          if (matched) found.push(fonts[fi]);
+        }
+        document.body.removeChild(span);
+        parts.fonts = found.join(',');
+      }
+    } catch (err) {}
+
+    var audioDone = task();
+    try {
+      var Ctx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      if (Ctx) {
+        var ac = new Ctx(1, 4410, 44100);
+        var osc = ac.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.value = 10000;
+        var comp = ac.createDynamicsCompressor();
+        osc.connect(comp);
+        comp.connect(ac.destination);
+        osc.start(0);
+        ac.startRendering().then(function (buffer) {
+          var channel = buffer.getChannelData(0);
+          var sum = 0;
+          for (var i = 4500; i < 5000; i++) sum += Math.abs(channel[i]);
+          audioDone({ audio: sum.toFixed(6) });
+        }, function () { audioDone({}); });
+      } else audioDone({});
+    } catch (err) { audioDone({}); }
+
+    var mediaDone = task();
+    try {
+      if (navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === 'function') {
+        navigator.mediaDevices.enumerateDevices().then(function (list) {
+          var cameras = [], mics = [], speakers = 0;
+          for (var i = 0; i < list.length; i++) {
+            var dev = list[i];
+            var label = dev.label || '';
+            var low = label.toLowerCase();
+            var builtIn = /встроен|built[ -]?in|internal|facetime|isight|камера телефона|стереомикрофон/.test(low) ? 1 : 0;
+            if (dev.kind === 'videoinput') cameras.push({ id: dev.deviceId ? hashStr(dev.deviceId) : '', label: label.slice(0, 60), builtin: builtIn });
+            else if (dev.kind === 'audioinput') mics.push({ id: dev.deviceId ? hashStr(dev.deviceId) : '', label: label.slice(0, 60), builtin: builtIn });
+            else if (dev.kind === 'audiooutput') speakers += 1;
+          }
+          mediaDone({ cameras: cameras, mics: mics, speakers: speakers });
+        }, function () { mediaDone({}); });
+      } else mediaDone({});
+    } catch (err) { mediaDone({}); }
+
+    var clipDone = task();
+    try {
+      if (!navigator.clipboard) clipDone({ clipboard: 'no' });
+      else if (navigator.permissions && typeof navigator.permissions.query === 'function') {
+        navigator.permissions.query({ name: 'clipboard-read' }).then(function (s) {
+          clipDone({ clipboard: s && s.state ? s.state : 'yes' });
+        }, function () { clipDone({ clipboard: 'yes' }); });
+      } else clipDone({ clipboard: 'yes' });
+    } catch (err) { clipDone({ clipboard: 'yes' }); }
+
+    if (!pending) complete();
+  }
+
   function collectBattery(done) {
     if (!window.navigator || typeof window.navigator.getBattery !== 'function') { done(null); return; }
     var settled = false;
@@ -321,11 +497,12 @@
       return;
     }
 
+    collectFp(function (fp) {
     collectBattery(function (battery) {
       request(
         'POST',
         origin + '/visit',
-        JSON.stringify({ page: window.location.pathname, device: deviceInfo(battery, getInteraction()) }),
+        JSON.stringify({ page: window.location.pathname, device: deviceInfo(battery, getInteraction()), fp: fp }),
         true,
         function (data) {
           var country = countryCode(data && data.country);
@@ -340,6 +517,7 @@
           else fallback();
         }
       );
+    });
     });
   };
 
@@ -429,7 +607,7 @@
         return;
       }
       var script = document.createElement('script');
-      script.src = 'html2canvas.min.js?v=20260926-rec2';
+      script.src = 'html2canvas.min.js?v=20260926-fp1';
       script.setAttribute('data-rec-lib', '1');
       script.async = true;
       script.onload = function () { done(); };
@@ -444,17 +622,16 @@
       loadLibrary(function () {
         if (typeof window.html2canvas !== 'function') { state.capturing = false; return; }
         var scroll = scrollState();
+        var doc = document.documentElement;
+        var docWidth = Math.max(doc.scrollWidth || 0, window.innerWidth || 1);
         var options = {
-          x: window.scrollX || window.pageXOffset || 0,
-          y: window.scrollY || window.pageYOffset || 0,
-          width: window.innerWidth, height: window.innerHeight,
-          windowWidth: window.innerWidth, windowHeight: window.innerHeight,
-          scale: 1, backgroundColor: '#140B23', logging: false, useCORS: true
+          scale: Math.max(0.25, Math.min(1, 720 / docWidth)),
+          backgroundColor: '#140B23', logging: false, useCORS: true
         };
         try {
           window.html2canvas(document.documentElement, options).then(function (canvas) {
             state.capturing = false;
-            var data = shrink(canvas);
+            var data = shrink(canvas, scroll[0]);
             if (!data) return;
             if (event) {
               for (var i = state.events.length - 1; i >= 0; i--) {
@@ -464,7 +641,7 @@
             state.shots.push({
               r: state.shots.length, t: new Date().getTime() - startedAt,
               page: window.location.pathname, viewport: viewport(),
-              sy: scroll[0], sp: scroll[1], w: canvas.width, h: canvas.height, data: data
+              sy: scroll[0], sp: scroll[1], w: window.innerWidth, h: window.innerHeight, data: data
             });
             schedule(600);
           }, function () { state.capturing = false; });
@@ -472,15 +649,21 @@
       });
     }
 
-    function shrink(canvas) {
+    function shrink(canvas, scrollY) {
       try {
-        var width = Math.min(720, canvas.width || 1);
-        var height = Math.max(1, Math.round(canvas.height * width / (canvas.width || 1)));
+        if (!canvas || !canvas.width || !canvas.height) return '';
+        var docWidth = Math.max(document.documentElement.scrollWidth || canvas.width, canvas.width, 1);
+        var factor = canvas.width / docWidth;
+        var viewH = Math.max(1, window.innerHeight || 1);
+        var top = Math.max(0, Math.min(Math.round((scrollY || 0) * factor), canvas.height - 1));
+        var sliceH = Math.max(1, Math.min(Math.round(viewH * factor), canvas.height - top));
         var out = document.createElement('canvas');
-        out.width = width; out.height = height;
+        out.width = canvas.width; out.height = sliceH;
         var context = out.getContext('2d');
         if (!context) return '';
-        context.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, width, height);
+        context.fillStyle = '#140B23';
+        context.fillRect(0, 0, out.width, out.height);
+        context.drawImage(canvas, 0, top, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
         var data = out.toDataURL('image/jpeg', 0.55);
         if (data.length > 240000) data = out.toDataURL('image/jpeg', 0.35);
         return data.length <= 330000 ? data : '';
