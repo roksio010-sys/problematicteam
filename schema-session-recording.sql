@@ -1,6 +1,7 @@
 -- Запись сессий: снимки экрана и события (клики, скролл).
--- Выполнить один раз в Cloudflare D1, привязанной к Worker pmt-visitor-log.
--- Таблицы rec_shots и rec_events очищаются Worker: снимки старше 14 дней, события старше 30 дней.
+-- Выполнить один раз в Cloudflare Dashboard → Storage & Databases → D1 → pmt (Console).
+-- Перед этим обновите cloudflare-worker.js (иначе новые эндпоинты вернут ошибки).
+-- Данные хранятся бессрочно: автоматическая чистка для rec_shots и rec_events отключена.
 
 CREATE TABLE IF NOT EXISTS rec_shots (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

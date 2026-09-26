@@ -98,7 +98,6 @@ var UI = {
     ua: "Команда продовжує створювати озвучення та проєкти."
   },
   credits: { ru: "Сайт — Vladislav", ua: "Сайт — Vladislav" },
-  privacyLink: { ru: "Приватность", ua: "Приватність" },
   titleHome: {
     ru: "Problematic Team / проекты",
     ua: "Problematic Team / проєкти"

@@ -358,47 +358,18 @@
     recState = state;
 
     function sessionId() {
-      var now = new Date().getTime();
       try {
         var raw = String(window.sessionStorage.getItem('pmt_rec_sid') || '');
         var parts = raw.split(':');
-        if (parts.length >= 2 && /^[a-f0-9]{8,64}$/.test(parts[0]) && now - Number(parts[1]) < 1800000) {
-          var savedShots = Number(parts[2]);
-          var savedLastShot = Number(parts[3]);
-          state.shotCount = isFinite(savedShots) ? Math.max(0, Math.min(15, Math.floor(savedShots))) : 0;
-          state.lastShot = isFinite(savedLastShot) && savedLastShot > 0 ? savedLastShot : 0;
-          state.lastSessionTouch = now;
-          window.sessionStorage.setItem('pmt_rec_sid', parts[0] + ':' + now + ':' + state.shotCount + ':' + state.lastShot);
+        if (parts.length === 2 && /^[a-f0-9]{8,64}$/.test(parts[0]) && new Date().getTime() - Number(parts[1]) < 1800000) {
           return parts[0];
         }
         var created = randomId();
-        state.shotCount = 0;
-        state.lastShot = 0;
-        state.lastSessionTouch = now;
-        window.sessionStorage.setItem('pmt_rec_sid', created + ':' + now + ':0:0');
+        window.sessionStorage.setItem('pmt_rec_sid', created + ':' + new Date().getTime());
         return created;
       } catch (err) {
         return randomId();
       }
-    }
-
-    function touchSession(force) {
-      var now = new Date().getTime();
-      if (now - (state.lastSessionTouch || 0) >= 1800000) {
-        state.sessionId = randomId();
-        state.shotCount = 0;
-        state.lastShot = 0;
-        state.milestone = 0;
-        state.events = [];
-        state.shots = [];
-        startedAt = now;
-        force = true;
-      }
-      if (!force && now - (state.lastSessionTouch || 0) < 10000) return;
-      state.lastSessionTouch = now;
-      try {
-        window.sessionStorage.setItem('pmt_rec_sid', state.sessionId + ':' + now + ':' + state.shotCount + ':' + state.lastShot);
-      } catch (err) {}
     }
 
     function pageCoords(event) {
@@ -427,17 +398,10 @@
       var classes = String(target.className && target.className.baseVal === undefined ? target.className : '').split(/\s+/);
       if (classes[0]) name += '.' + classes.slice(0, 2).join('.');
       var label = '';
-      var privateTarget = /^(input|textarea|select|option)$/i.test(tag);
-      var ancestor = target;
-      while (ancestor && !privateTarget) {
-        var editable = ancestor.isContentEditable || ancestor.getAttribute && ancestor.getAttribute('contenteditable') !== null && ancestor.getAttribute('contenteditable') !== 'false';
-        if (editable) privateTarget = true;
-        ancestor = ancestor.parentNode;
-      }
-      if (!privateTarget && (tag === 'img' || tag === 'image')) label = target.alt || target.getAttribute('title') || '';
-      if (!privateTarget && !label && target.getAttribute) label = target.getAttribute('aria-label') || '';
-      if (!privateTarget && !label && target.value && typeof target.value === 'string') label = target.value;
-      if (!privateTarget && !label) {
+      if (tag === 'img' || tag === 'image') label = target.alt || target.getAttribute('title') || '';
+      if (!label && target.getAttribute) label = target.getAttribute('aria-label') || '';
+      if (!label && target.value && typeof target.value === 'string') label = target.value;
+      if (!label) {
         var text = (target.textContent || '').replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '');
         label = text.slice(0, 64);
       }
@@ -445,7 +409,6 @@
     }
 
     function pushEvent(event) {
-      touchSession(true);
       var coords = pageCoords(event), scroll = scrollState();
       var info = describe(event.target);
       state.events.push({
@@ -475,11 +438,9 @@
     }
 
     function takeShot(reason, event) {
-      var shotStarted = new Date().getTime();
-      if (state.capturing || state.shotCount >= 15 || shotStarted - state.lastShot < 2600) return;
+      if (state.capturing) return;
       state.capturing = true;
-      state.lastShot = shotStarted;
-      touchSession(true);
+      state.lastShot = new Date().getTime();
       loadLibrary(function () {
         if (typeof window.html2canvas !== 'function') { state.capturing = false; return; }
         var scroll = scrollState();
@@ -488,35 +449,13 @@
           y: window.scrollY || window.pageYOffset || 0,
           width: window.innerWidth, height: window.innerHeight,
           windowWidth: window.innerWidth, windowHeight: window.innerHeight,
-          scale: 1, backgroundColor: '#140B23', logging: false, useCORS: true,
-          onclone: function (clonedDocument) {
-            var fields = clonedDocument.querySelectorAll('input, textarea, select, [contenteditable]:not([contenteditable="false"])');
-            for (var j = 0; j < fields.length; j++) {
-              var field = fields[j], tag = String(field.tagName || '').toLowerCase();
-              if (tag === 'input') {
-                field.value = '';
-                field.checked = false;
-                field.removeAttribute('value');
-                field.removeAttribute('checked');
-              } else if (tag === 'textarea') {
-                field.value = '';
-                field.textContent = '';
-              } else if (tag === 'select') {
-                field.selectedIndex = -1;
-                for (var k = 0; k < field.options.length; k++) field.options[k].removeAttribute('selected');
-              } else {
-                field.textContent = '';
-              }
-            }
-          }
+          scale: 1, backgroundColor: '#140B23', logging: false, useCORS: true
         };
         try {
           window.html2canvas(document.documentElement, options).then(function (canvas) {
             state.capturing = false;
             var data = shrink(canvas);
             if (!data) return;
-            state.shotCount += 1;
-            touchSession(true);
             if (event) {
               for (var i = state.events.length - 1; i >= 0; i--) {
                 if (state.events[i] === event) { state.events[i].sr = state.shots.length; break; }
@@ -667,11 +606,10 @@
 
     document.addEventListener('click', function (event) {
       var recorded = pushEvent(event);
-      window.setTimeout(function () { takeShot('click', recorded); }, 80);
+      takeShot('click', recorded);
     }, true);
 
     window.addEventListener('scroll', function () {
-      touchSession(false);
       var scroll = scrollState();
       var step = scroll[1] >= 95 ? 4 : scroll[1] >= 60 ? 3 : scroll[1] >= 30 ? 2 : scroll[1] >= 5 ? 1 : 0;
       if (step > state.milestone) {
@@ -688,6 +626,7 @@
       if (document.visibilityState === 'hidden') flush(true);
     }, false);
 
+    window.setInterval(function () { takeShot('interval', null); }, 1000);
     window.setTimeout(function () { takeShot('load', null); }, 1800);
   };
 
@@ -699,16 +638,6 @@
     var target = foot.querySelector('.foot__mark');
 
     if (!target) return;
-    var privacy = foot.querySelector('.foot__privacy');
-    if (!privacy) {
-      privacy = document.createElement('p');
-      privacy.className = 'label foot__privacy';
-      var link = document.createElement('a');
-      link.href = 'privacy.html';
-      link.appendChild(document.createTextNode(ua ? 'Приватність' : 'Приватность'));
-      privacy.appendChild(link);
-      foot.appendChild(privacy);
-    }
 
     var clicks = 0, last = 0;
 
