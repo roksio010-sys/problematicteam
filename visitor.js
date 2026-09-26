@@ -6,6 +6,7 @@
   if (!/^https:\/\/[a-z0-9.-]+(?::[0-9]+)?$/i.test(origin)) origin = '';
   var started = false, finished = false, callbacks = [];
   var getInteraction = collectInteraction();
+  var recState = null;
 
   function countryCode(value) {
     var code = String(value || '').replace(/^\s+|\s+$/g, '').toUpperCase();
@@ -334,11 +335,299 @@
             } catch (err) {}
             return;
           }
+          if (!data || !data.blocked) api.startRecording();
           if (country) finish(country);
           else fallback();
         }
       );
     });
+  };
+
+
+  /* Session recording: viewport snapshots and click/scroll events (modern browsers only). */
+  api.startRecording = function () {
+    if (!origin || api.legacy) return;
+    if (typeof document.createElement('canvas').toDataURL !== 'function') return;
+    if (recState) return;
+
+    var startedAt = new Date().getTime();
+    var state = {
+      sessionId: '', events: [], shots: [], ref: 0,
+      shotCount: 0, lastShot: 0, milestone: 0, sending: false, timer: null, inflight: 0
+    };
+    recState = state;
+
+    function sessionId() {
+      try {
+        var raw = String(window.sessionStorage.getItem('pmt_rec_sid') || '');
+        var parts = raw.split(':');
+        if (parts.length === 2 && /^[a-f0-9]{8,64}$/.test(parts[0]) && new Date().getTime() - Number(parts[1]) < 1800000) {
+          return parts[0];
+        }
+        var created = randomId();
+        window.sessionStorage.setItem('pmt_rec_sid', created + ':' + new Date().getTime());
+        return created;
+      } catch (err) {
+        return randomId();
+      }
+    }
+
+    function pageCoords(event) {
+      var x = Number(event.pageX), y = Number(event.pageY);
+      if (!isFinite(x)) x = Number(event.clientX) + (window.scrollX || window.pageXOffset || 0);
+      if (!isFinite(y)) y = Number(event.clientY) + (window.scrollY || window.pageYOffset || 0);
+      return [Math.round(x) || 0, Math.round(y) || 0];
+    }
+
+    function scrollState() {
+      var doc = document.documentElement;
+      var top = window.scrollY || window.pageYOffset || 0;
+      var total = Math.max(doc.scrollHeight - window.innerHeight, 0);
+      return [Math.round(top), total ? Math.min(100, Math.round(top * 100 / total)) : 0];
+    }
+
+    function viewport() {
+      return (window.innerWidth || 0) + 'x' + (window.innerHeight || 0);
+    }
+
+    function describe(target) {
+      var tag = String(target.tagName || '').toLowerCase();
+      if (!tag) return { target: '', label: '' };
+      var name = tag;
+      if (target.id) name += '#' + String(target.id).slice(0, 40);
+      var classes = String(target.className && target.className.baseVal === undefined ? target.className : '').split(/\s+/);
+      if (classes[0]) name += '.' + classes.slice(0, 2).join('.');
+      var label = '';
+      if (tag === 'img' || tag === 'image') label = target.alt || target.getAttribute('title') || '';
+      if (!label && target.getAttribute) label = target.getAttribute('aria-label') || '';
+      if (!label && target.value && typeof target.value === 'string') label = target.value;
+      if (!label) {
+        var text = (target.textContent || '').replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '');
+        label = text.slice(0, 64);
+      }
+      return { target: name.slice(0, 120), label: String(label || '').slice(0, 120) };
+    }
+
+    function pushEvent(event) {
+      var coords = pageCoords(event), scroll = scrollState();
+      var info = describe(event.target);
+      state.events.push({
+        kind: 'click', t: new Date().getTime() - startedAt,
+        x: coords[0], y: coords[1], vx: Math.round(event.clientX) || 0, vy: Math.round(event.clientY) || 0,
+        viewport: viewport(), sy: scroll[0], sp: scroll[1],
+        tg: info.target, lb: info.label, sr: -1
+      });
+      return state.events[state.events.length - 1];
+    }
+
+    function loadLibrary(done) {
+      if (window.html2canvas) { done(); return; }
+      var existing = document.querySelector('script[data-rec-lib]');
+      if (existing) {
+        existing.addEventListener('load', function () { done(); }, false);
+        existing.addEventListener('error', function () { done(); }, false);
+        return;
+      }
+      var script = document.createElement('script');
+      script.src = 'html2canvas.min.js?v=20260926-rec1';
+      script.setAttribute('data-rec-lib', '1');
+      script.async = true;
+      script.onload = function () { done(); };
+      script.onerror = function () { done(); };
+      document.getElementsByTagName('head')[0].appendChild(script);
+    }
+
+    function takeShot(reason, event) {
+      if (state.capturing) return;
+      state.capturing = true;
+      state.lastShot = new Date().getTime();
+      loadLibrary(function () {
+        if (typeof window.html2canvas !== 'function') { state.capturing = false; return; }
+        var scroll = scrollState();
+        var options = {
+          x: window.scrollX || window.pageXOffset || 0,
+          y: window.scrollY || window.pageYOffset || 0,
+          width: window.innerWidth, height: window.innerHeight,
+          windowWidth: window.innerWidth, windowHeight: window.innerHeight,
+          scale: 1, backgroundColor: '#140B23', logging: false, useCORS: true
+        };
+        try {
+          window.html2canvas(document.documentElement, options).then(function (canvas) {
+            state.capturing = false;
+            var data = shrink(canvas);
+            if (!data) return;
+            if (event) {
+              for (var i = state.events.length - 1; i >= 0; i--) {
+                if (state.events[i] === event) { state.events[i].sr = state.shots.length; break; }
+              }
+            }
+            state.shots.push({
+              r: state.shots.length, t: new Date().getTime() - startedAt,
+              page: window.location.pathname, viewport: viewport(),
+              sy: scroll[0], sp: scroll[1], w: canvas.width, h: canvas.height, data: data
+            });
+            schedule(600);
+          }, function () { state.capturing = false; });
+        } catch (err) { state.capturing = false; }
+      });
+    }
+
+    function shrink(canvas) {
+      try {
+        var width = Math.min(720, canvas.width || 1);
+        var height = Math.max(1, Math.round(canvas.height * width / (canvas.width || 1)));
+        var out = document.createElement('canvas');
+        out.width = width; out.height = height;
+        var context = out.getContext('2d');
+        if (!context) return '';
+        context.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, width, height);
+        var data = out.toDataURL('image/jpeg', 0.55);
+        if (data.length > 240000) data = out.toDataURL('image/jpeg', 0.35);
+        return data.length <= 330000 ? data : '';
+      } catch (err) {
+        return '';
+      }
+    }
+
+    function schedule(delay) {
+      if (state.timer) return;
+      state.timer = window.setTimeout(function () {
+        state.timer = null;
+        flush();
+      }, delay || 4200);
+    }
+
+    function reindex() {
+      var map = {};
+      for (var i = 0; i < state.shots.length; i++) {
+        map[state.shots[i].r] = i;
+        state.shots[i].r = i;
+      }
+      for (var j = 0; j < state.events.length; j++) {
+        var ref = state.events[j].sr;
+        state.events[j].sr = ref >= 0 && map[ref] !== undefined ? map[ref] : -1;
+      }
+    }
+
+    function groups() {
+      var free = [], byShot = {};
+      for (var i = 0; i < state.shots.length; i++) byShot[state.shots[i].r] = [];
+      for (var j = 0; j < state.events.length; j++) {
+        var ref = state.events[j].sr;
+        if (ref >= 0 && byShot[ref] !== undefined) byShot[ref].push(state.events[j]);
+        else free.push(state.events[j]);
+      }
+      return [{ shots: [], events: free }].concat(Object.keys(byShot).map(function (key) {
+        return { shots: [state.shots[Number(key)]], events: byShot[key] };
+      }));
+    }
+
+    function restore(group) {
+      for (var i = 0; i < group.shots.length; i++) state.shots.push(group.shots[i]);
+      for (var j = 0; j < group.events.length; j++) state.events.push(group.events[j]);
+      reindex();
+    }
+
+    function deliver(group, useBeacon) {
+      var events = [];
+      for (var i = 0; i < group.events.length; i++) {
+        var event = group.events[i], si = -1;
+        for (var j = 0; j < group.shots.length; j++) {
+          if (group.shots[j].r === event.sr) { si = j; break; }
+        }
+        var copy = {};
+        for (var key in event) copy[key] = event[key];
+        copy.si = si;
+        events.push(copy);
+      }
+      var payload = JSON.stringify({
+        visitorId: visitorId(), sessionId: state.sessionId,
+        page: window.location.pathname, shots: group.shots, events: events
+      });
+      if (useBeacon && typeof navigator.sendBeacon === 'function') {
+        try {
+          navigator.sendBeacon(origin + '/rec', new Blob([payload], { type: 'text/plain;charset=UTF-8' }));
+        } catch (err) {}
+        return true;
+      }
+      var settled = false, xhr = null, timer = window.setTimeout(function () {
+        if (settled) return;
+        settled = true;
+        try { if (xhr) xhr.abort(); } catch (err) {}
+        restore(group);
+        settle();
+      }, 12000);
+      function settle() {
+        state.inflight -= 1;
+        if (state.inflight <= 0) state.sending = false;
+      }
+      try {
+        xhr = new XMLHttpRequest();
+        xhr.open('POST', origin + '/rec', true);
+        xhr.timeout = 11000;
+        xhr.setRequestHeader('Content-Type', 'text/plain;charset=UTF-8');
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState !== 4 || settled) return;
+          settled = true;
+          window.clearTimeout(timer);
+          if (xhr.status < 200 || xhr.status >= 300) restore(group);
+          settle();
+        };
+        xhr.send(payload);
+      } catch (err) {
+        settled = true;
+        window.clearTimeout(timer);
+        restore(group);
+        settle();
+      }
+      return true;
+    }
+
+    function flush(useBeacon) {
+      if (state.sending || !state.events.length && !state.shots.length) return;
+      state.sending = true;
+      reindex();
+      var pending = groups();
+      state.events = [];
+      state.shots = [];
+      for (var i = 0; i < pending.length; i++) {
+        if (!pending[i].events.length && !pending[i].shots.length) continue;
+        if (useBeacon && typeof navigator.sendBeacon === 'function') {
+          deliver(pending[i], true);
+          continue;
+        }
+        state.inflight += 1;
+        deliver(pending[i], false);
+      }
+      if (!state.inflight) state.sending = false;
+    }
+
+    state.sessionId = sessionId();
+
+    document.addEventListener('click', function (event) {
+      var recorded = pushEvent(event);
+      takeShot('click', recorded);
+    }, true);
+
+    window.addEventListener('scroll', function () {
+      var scroll = scrollState();
+      var step = scroll[1] >= 95 ? 4 : scroll[1] >= 60 ? 3 : scroll[1] >= 30 ? 2 : scroll[1] >= 5 ? 1 : 0;
+      if (step > state.milestone) {
+        state.milestone = step;
+        takeShot('scroll', null);
+      }
+    }, { passive: true, capture: false });
+
+    window.addEventListener('pagehide', function () {
+      if (state.timer) { window.clearTimeout(state.timer); state.timer = null; }
+      flush(true);
+    }, false);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') flush(true);
+    }, false);
+
+    window.setInterval(function () { takeShot('interval', null); }, 1000);
+    window.setTimeout(function () { takeShot('load', null); }, 1800);
   };
 
   api.mountVisitorTools = function () {
