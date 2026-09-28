@@ -41,3 +41,8 @@ CREATE INDEX IF NOT EXISTS idx_rec_shots_session ON rec_shots (session_id, taken
 CREATE INDEX IF NOT EXISTS idx_rec_shots_taken ON rec_shots (taken_at);
 CREATE INDEX IF NOT EXISTS idx_rec_events_session ON rec_events (session_id, event_at);
 CREATE INDEX IF NOT EXISTS idx_rec_events_taken ON rec_events (event_at);
+
+CREATE TABLE IF NOT EXISTS blocked_ips (
+  ip TEXT PRIMARY KEY,
+  blocked_at INTEGER NOT NULL
+);

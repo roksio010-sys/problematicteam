@@ -341,6 +341,7 @@
 
   function collectFp(done) {
     var parts = {};
+    var hw = {};
     var settled = false;
     var pending = 0;
     var timer = window.setTimeout(function () { complete(); }, 1600);
@@ -354,19 +355,45 @@
       if (json.length > 3500) json = json.slice(0, 3500);
       var seed = '';
       for (var key in parts) { if (Object.prototype.hasOwnProperty.call(parts, key)) seed += key + '=' + parts[key] + ';'; }
+      try {
+        var gpuList = String(parts.gpu || '').split('/');
+        hw.gpu = gpuList.length > 1 ? gpuList[gpuList.length - 1].trim() : '';
+        hw.screen = parts.screen || '';
+        hw.dpr = parts.dpr || 0;
+        hw.cpu = parts.cpu || 0;
+        hw.ram = parts.ram || 0;
+        hw.tz = parts.tz || '';
+        hw.touch = parts.touch || 0;
+        hw.canvas = parts.canvas || '';
+        hw.webgl = parts.webgl || '';
+        hw.fonts = parts.fonts || '';
+        hw.audio = parts.audio || '';
+      } catch (err) {}
+      var hwSeed = '';
+      for (var hkey in hw) { if (Object.prototype.hasOwnProperty.call(hw, hkey)) hwSeed += hkey + '=' + hw[hkey] + ';'; }
       var simple = hashStr(seed);
+      var simpleHw = hashStr(hwSeed) + hashStr(hwSeed.split('').reverse().join(''));
+      function finish(sh, hh) {
+        done({ hash: sh, hw: hh, data: json });
+      }
       try {
         if (window.crypto && window.crypto.subtle && window.TextEncoder) {
-          window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(seed)).then(function (buf) {
+          var enc = new TextEncoder();
+          window.crypto.subtle.digest('SHA-256', enc.encode(seed)).then(function (buf) {
             var arr = new Uint8Array(buf);
             var hex = '';
             for (var i = 0; i < 16; i++) hex += ('0' + arr[i].toString(16)).slice(-2);
-            done({ hash: hex, data: json });
-          }, function () { done({ hash: simple, data: json }); });
+            return window.crypto.subtle.digest('SHA-256', enc.encode(hwSeed)).then(function (buf2) {
+              var arr2 = new Uint8Array(buf2);
+              var hex2 = '';
+              for (var j = 0; j < 16; j++) hex2 += ('0' + arr2[j].toString(16)).slice(-2);
+              finish(hex, hex2);
+            });
+          }).catch(function () { finish(simple, simpleHw); });
           return;
         }
       } catch (err) {}
-      done({ hash: simple, data: json });
+      finish(simple, simpleHw);
     }
 
     function task() {
@@ -387,6 +414,12 @@
     try { parts.dpr = window.devicePixelRatio || 0; } catch (err) {}
     try { parts.cpu = navigator.hardwareConcurrency || 0; } catch (err) {}
     try { parts.ram = navigator.deviceMemory || 0; } catch (err) {}
+    /* Stable hardware subset: survives a browser change on the same machine. */
+    try { hw.screen = parts.screen; } catch (err) {}
+    try { hw.dpr = parts.dpr; } catch (err) {}
+    try { hw.cpu = parts.cpu; } catch (err) {}
+    try { hw.ram = parts.ram; } catch (err) {}
+    try { hw.tz = parts.tz; } catch (err) {}
     try { parts.touch = navigator.maxTouchPoints || 0; } catch (err) {}
     try { parts.platform = navigator.platform || ''; } catch (err) {}
 
@@ -404,6 +437,25 @@
         ctx2.fillStyle = 'rgba(102,204,0,0.7)';
         ctx2.fillText('PMT fingerprint 2026', 4, 25);
         parts.canvas = hashStr(canvasEl.toDataURL());
+        var hwCanvas = document.createElement('canvas');
+        hwCanvas.width = 200; hwCanvas.height = 50;
+        var hctx = hwCanvas.getContext('2d');
+        if (hctx) {
+          var grad = hctx.createLinearGradient(0, 0, 200, 50);
+          grad.addColorStop(0, '#f60'); grad.addColorStop(0.5, '#069'); grad.addColorStop(1, '#6a9');
+          hctx.fillStyle = grad;
+          hctx.fillRect(0, 0, 200, 50);
+          hctx.globalAlpha = 0.6;
+          hctx.beginPath();
+          hctx.arc(60, 25, 18, 0, Math.PI * 2, true);
+          hctx.fillStyle = '#834';
+          hctx.fill();
+          hctx.globalAlpha = 1;
+          hctx.shadowBlur = 6; hctx.shadowColor = '#03a';
+          hctx.fillRect(120, 8, 60, 30);
+          hctx.shadowBlur = 0;
+          hw.canvas = hashStr(hwCanvas.toDataURL());
+        }
       }
     } catch (err) {}
 
@@ -412,9 +464,15 @@
       var gl = glCanvas.getContext('webgl') || glCanvas.getContext('experimental-webgl');
       if (gl) {
         var dbg = gl.getExtension('WEBGL_debug_renderer_info');
-        parts.gpu = dbg
-          ? String(gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL)) + ' / ' + String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL))
-          : String(gl.getParameter(gl.VENDOR)) + ' / ' + String(gl.getParameter(gl.RENDERER));
+        var renderer = dbg
+          ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL))
+          : String(gl.getParameter(gl.RENDERER));
+        var vendor = dbg
+          ? String(gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL))
+          : String(gl.getParameter(gl.VENDOR));
+        parts.gpu = vendor + ' / ' + renderer;
+        /* Strip the browser-specific vendor prefix so the GPU string matches across browsers. */
+        hw.gpu = renderer.replace(/^(?:angle \(|google inc\. \(|mozilla|apple| Direct3D.*| OpenGL.*| Metal.*)/i, '').replace(/^\(|\)$/g, '').trim();
         glCanvas.width = 160; glCanvas.height = 80;
         gl.clearColor(0.4, 0.7, 0.9, 1);
         gl.clear(gl.COLOR_BUFFER_BIT);
