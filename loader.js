@@ -10,7 +10,7 @@
   }
   function load(file, done) {
     var script = document.createElement('script'), finished = false;
-    script.src = file + '?v=20260928-fp4';
+    script.src = file + '?v=20260928-final';
     script.async = false;
     script.onload = script.onreadystatechange = function () {
       if (!finished && (!script.readyState || /loaded|complete/.test(script.readyState))) {
@@ -30,7 +30,7 @@
   }
   load('data.js', function () {
     load('site-config.js', function () {
-      load('visitor.js?v=20260928-fp6', function () { load(PMT.legacy ? 'script.legacy.js' : 'script.js'); });
+      load('visitor.js?v=20260928-final', function () { load(PMT.legacy ? 'script.legacy.js' : 'script.js'); });
     });
   });
 }(window, document));
