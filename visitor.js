@@ -556,6 +556,7 @@
       shotCount: 0, lastShot: 0, milestone: 0, sending: false, timer: null, inflight: 0
     };
     recState = state;
+    window.PMT._recDebug = state;
 
     function sessionId() {
       try {
