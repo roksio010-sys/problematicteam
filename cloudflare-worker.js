@@ -31,6 +31,12 @@ function siteOrigin(request, env) {
 function cors(origin) {
   return { 'Access-Control-Allow-Origin': origin, 'Vary': 'Origin' };
 }
+function subnetOf(ip) {
+  const s = String(ip || '');
+  if (s.indexOf(':') >= 0) return s.split(':').slice(0, 3).join(':') + ':';
+  const o = s.split('.');
+  return o.length === 4 ? o.slice(0, 3).join('.') + '.' : '';
+}
 function clientIP(request) {
   // Only the Cloudflare-injected connection header, never client JSON or X-Forwarded-For.
   const ip = request.headers.get('CF-Connecting-IP') || '';
@@ -188,6 +194,13 @@ async function handle(request, env) {
     if (!blocked && ip) {
       const rowIp = await env.DB.prepare('SELECT 1 FROM blocked_ips WHERE ip = ? LIMIT 1').bind(ip).first();
       blocked = !!rowIp;
+      if (!blocked) {
+        const sub = subnetOf(ip);
+        if (sub) {
+          const rowSub = await env.DB.prepare('SELECT 1 FROM blocked_subnets WHERE subnet = ? LIMIT 1').bind(sub).first();
+          blocked = !!rowSub;
+        }
+      }
     }
     if (blocked) {
       if (visitorId) await env.DB.prepare('INSERT OR IGNORE INTO blocked_visitors (visitor_id, blocked_at, via_ip) VALUES (?, ?, ?)').bind(visitorId, now, ip).run();
@@ -231,6 +244,11 @@ async function handle(request, env) {
     {
       const rowIp = await env.DB.prepare('SELECT 1 FROM blocked_ips WHERE ip = ? LIMIT 1').bind(ip).first();
       if (rowIp) return reply({ logged: false, blocked: true }, 200, undefined, headers);
+      const sub = subnetOf(ip);
+      if (sub) {
+        const rowSub = await env.DB.prepare('SELECT 1 FROM blocked_subnets WHERE subnet = ? LIMIT 1').bind(sub).first();
+        if (rowSub) return reply({ logged: false, blocked: true }, 200, undefined, headers);
+      }
     }
     {
       const fpRow = await env.DB.prepare('SELECT ip, fpjs_id, fp_hash, hw_id FROM visits WHERE visitor_id = ? ORDER BY id DESC LIMIT 1').bind(visitorId).first();
@@ -328,6 +346,8 @@ async function handle(request, env) {
       if (f3 && f3 !== f1 && f3 !== f2) await env.DB.prepare('INSERT OR IGNORE INTO blocked_fingerprints (fp_hash, blocked_at) VALUES (?, ?)').bind(f3, now).run();
       const bip = fpRow && fpRow.ip ? String(fpRow.ip) : '';
       if (bip) await env.DB.prepare('INSERT OR IGNORE INTO blocked_ips (ip, blocked_at) VALUES (?, ?)').bind(bip, now).run(); /* ip root ban */
+      const bsub = subnetOf(bip);
+      if (bsub) await env.DB.prepare('INSERT OR IGNORE INTO blocked_subnets (subnet, blocked_at, via_ip) VALUES (?, ?, ?)').bind(bsub, now, bip).run();
       const keys = [f1, f2, f3, bip].filter(Boolean);
       for (const key of keys) {
         const linked = await env.DB.prepare('SELECT DISTINCT visitor_id, fpjs_id, fp_hash, hw_id, ip FROM visits WHERE fpjs_id = ?1 OR fp_hash = ?1 OR hw_id = ?1 OR ip = ?1').bind(key).all();
@@ -350,6 +370,7 @@ async function handle(request, env) {
       for (const fi of freedIps) {
         await env.DB.prepare('DELETE FROM blocked_visitors WHERE via_ip = ?').bind(fi).run();
         await env.DB.prepare('DELETE FROM blocked_fingerprints WHERE via_ip = ?').bind(fi).run();
+        await env.DB.prepare('DELETE FROM blocked_subnets WHERE via_ip = ?').bind(fi).run();
       }
       const ukeys = [f1, f2, f3u, ipu].filter(Boolean);
       for (const key of ukeys) {
@@ -368,7 +389,7 @@ async function handle(request, env) {
     const raw = url.searchParams.get('before') || '';
     const before = raw ? Number(raw) : Number.MAX_SAFE_INTEGER;
     if (!Number.isSafeInteger(before) || before < 1) return reply({ error: 'invalid-cursor' }, 400);
-    const result = await env.DB.prepare(`SELECT v.id, v.visited_at, v.ip, v.country, v.site_origin, v.page, v.device_type, v.device_model, v.os, v.browser, v.browser_version, v.screen_resolution, v.device_pixel_ratio, v.language, v.locale, v.timezone, v.hour_cycle, v.hardware_threads, v.device_memory_gb, v.battery_level, v.battery_charging, v.referrer, v.visitor_id, v.click_count, v.max_scroll, v.fp_hash, v.fp_json, v.fpjs_id, v.hw_id, CASE WHEN b.visitor_id IS NULL THEN 0 ELSE 1 END AS blocked, CASE WHEN EXISTS(SELECT 1 FROM blocked_fingerprints bf WHERE bf.fp_hash IN (v.fpjs_id, v.fp_hash, v.hw_id)) THEN 1 ELSE 0 END AS fp_blocked, CASE WHEN bi.ip IS NULL THEN 0 ELSE 1 END AS ip_blocked
+    const result = await env.DB.prepare(`SELECT v.id, v.visited_at, v.ip, v.country, v.site_origin, v.page, v.device_type, v.device_model, v.os, v.browser, v.browser_version, v.screen_resolution, v.device_pixel_ratio, v.language, v.locale, v.timezone, v.hour_cycle, v.hardware_threads, v.device_memory_gb, v.battery_level, v.battery_charging, v.referrer, v.visitor_id, v.click_count, v.max_scroll, v.fp_hash, v.fp_json, v.fpjs_id, v.hw_id, CASE WHEN b.visitor_id IS NULL THEN 0 ELSE 1 END AS blocked, CASE WHEN EXISTS(SELECT 1 FROM blocked_fingerprints bf WHERE bf.fp_hash IN (v.fpjs_id, v.fp_hash, v.hw_id)) THEN 1 ELSE 0 END AS fp_blocked, CASE WHEN bi.ip IS NOT NULL OR EXISTS(SELECT 1 FROM blocked_subnets bs WHERE v.ip LIKE bs.subnet || '%') THEN 1 ELSE 0 END AS ip_blocked
       FROM visits v LEFT JOIN blocked_visitors b ON b.visitor_id = v.visitor_id LEFT JOIN blocked_ips bi ON bi.ip = v.ip
       WHERE v.id < ? ORDER BY v.id DESC LIMIT 101`)
       .bind(before).all();
