@@ -30,7 +30,7 @@
   }
   load('data.js', function () {
     load('site-config.js', function () {
-      load('visitor.js', function () { load(PMT.legacy ? 'script.legacy.js' : 'script.js'); });
+      load('visitor.js?v=20260928-fp6', function () { load(PMT.legacy ? 'script.legacy.js' : 'script.js'); });
     });
   });
 }(window, document));
