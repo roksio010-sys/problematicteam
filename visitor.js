@@ -82,7 +82,9 @@
       xhr.onreadystatechange = function () {
         if (xhr.readyState !== 4) return;
         if (xhr.status < 200 || xhr.status >= 300) {
-          settle(null);
+          var errData = null;
+          try { errData = JSON.parse(xhr.responseText); } catch (err2) {}
+          settle(errData && errData.blocked ? { status: xhr.status, blocked: true } : null);
           return;
         }
 
@@ -687,6 +689,7 @@
             return;
           }
           if (data) {
+            try { window.localStorage.setItem('pmt_gate', visitorId() + ':' + Date.now()); } catch (gateErr) {}
             clearEverywhere('pmt_blk');
             api.startRecording();
             if (country) finish(country);

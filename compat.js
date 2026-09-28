@@ -98,3 +98,52 @@
   };
   window.PMT = api;
 }(window, document));
+/* Ban gate: synchronous, runs in <head> before anything paints.
+   Fresh server verdict (<60s) = fast path, otherwise one tiny gate request. */
+(function () {
+  var ls = null;
+  try { ls = window.localStorage; } catch (e1) { ls = null; }
+  var vid = '';
+  try { vid = ls ? String(ls.getItem('pmt_visitor_id') || '') : ''; } catch (e2) {}
+  var flag = '';
+  try { flag = ls ? (ls.getItem('pmt_blk') || '') : (/pmt_blk=1/.test(document.cookie) ? '1' : ''); } catch (e3) {}
+  function hardBlank() {
+    try { document.title = 'Доступ ограничен'; } catch (err) {}
+    try { window.stop(); } catch (err2) {}
+    try {
+      document.documentElement.innerHTML = '<head><meta charset="utf-8"><title>Доступ ограничен</title></head><body style="font-family:Arial,sans-serif;padding:40px;text-align:center"><h1>Доступ ограничен</h1><p>Для этого браузера доступ к сайту отключён владельцем.</p></body>';
+    } catch (err3) {}
+    throw new Error('PMT blocked');
+  }
+  function clearFlag() {
+    try { ls.removeItem('pmt_blk'); } catch (err) {}
+    try { document.cookie = 'pmt_blk=; path=/; max-age=0; SameSite=Lax'; } catch (err2) {}
+  }
+  function gate() {
+    try {
+      var x = new XMLHttpRequest();
+      x.open('POST', 'https://pmt-visitor-log.roksio010.workers.dev/api/gate', false);
+      x.setRequestHeader('Content-Type', 'text/plain;charset=UTF-8');
+      x.send(JSON.stringify({ vid: vid }));
+      if (x.status === 200) {
+        var r = JSON.parse(x.responseText);
+        if (r && r.blocked) {
+          try { ls.setItem('pmt_blk', '1'); } catch (err4) {}
+          hardBlank();
+        }
+        clearFlag();
+        return true;
+      }
+    } catch (err5) { /* gate unreachable: keep the local block flag as-is */ }
+    return false;
+  }
+  /* A stored flag must not outlive an unban: re-ask the server once per load. */
+  if (flag === '1') { if (gate()) return; hardBlank(); }
+  var stamp = '';
+  try { stamp = ls ? String(ls.getItem('pmt_gate') || '') : ''; } catch (e4) {}
+  var now = Date.now();
+  var bits = stamp.split(':');
+  var fresh = bits.length === 2 && bits[0] === vid && now >= Number(bits[1]) - 5000 && (now - Number(bits[1])) < 60000;
+  if (fresh) return;
+  gate();
+}());
