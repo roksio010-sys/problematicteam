@@ -650,13 +650,6 @@
           scale: Math.max(0.25, Math.min(1, 720 / docWidth)),
           backgroundColor: '#140B23', logging: false, useCORS: true
         };
-        var warmMax = Math.max(0, doc.scrollHeight - window.innerHeight);
-        window.scrollTo(0, warmMax);
-        if (doc.scrollTop !== warmMax) doc.scrollTop = warmMax;
-        window.setTimeout(function () {
-          window.scrollTo(0, scroll[0]);
-          if (doc.scrollTop !== scroll[0]) doc.scrollTop = scroll[0];
-          window.setTimeout(function () {
         try {
           window.html2canvas(document.documentElement, options).then(function (canvas) {
             state.capturing = false;
@@ -675,8 +668,6 @@
             schedule(600);
           }, function () { state.capturing = false; });
         } catch (err) { state.capturing = false; }
-          }, 260);
-        }, 420);
       });
     }
 

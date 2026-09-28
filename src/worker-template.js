@@ -169,6 +169,11 @@ async function handle(request, env) {
     const maxScroll = Number(interaction.maxScroll);
     const clicks = Number.isFinite(clickCount) && clickCount >= 0 && clickCount <= 1000 ? Math.round(clickCount) : 0;
     const scroll = Number.isFinite(maxScroll) && maxScroll >= 0 && maxScroll <= 100 ? Math.round(maxScroll) : 0;
+    const fp = data.fp && typeof data.fp === 'object' && !Array.isArray(data.fp) ? data.fp : null;
+    const fpHash = fp && typeof fp.hash === 'string' && /^[a-f0-9]{16,64}$/i.test(fp.hash) ? fp.hash.toLowerCase() : '';
+    const fpJson = fp && typeof fp.data === 'string' ? fp.data.slice(0, 4000) : '';
+    const fpjsRaw = typeof data.fpjs === 'string' ? data.fpjs : '';
+    const fpjsId = /^[a-f0-9]{16,64}$/i.test(fpjsRaw) ? fpjsRaw.toLowerCase() : '';
     const ip = clientIP(request);
     let blocked = false;
     if (visitorId) {
@@ -184,11 +189,6 @@ async function handle(request, env) {
     try {
       const key = await sign('visit-rate:' + ip, env.ADMIN_PASSWORD);
       if (!(await allowRate(env.DB, key, 120, 60000, now))) return reply({ country: code, logged: false }, 200, undefined, headers);
-      const fp = data.fp && typeof data.fp === 'object' && !Array.isArray(data.fp) ? data.fp : null;
-      const fpHash = fp && typeof fp.hash === 'string' && /^[a-f0-9]{16,64}$/i.test(fp.hash) ? fp.hash.toLowerCase() : '';
-      const fpJson = fp && typeof fp.data === 'string' ? fp.data.slice(0, 4000) : '';
-      const fpjsRaw = typeof data.fpjs === 'string' ? data.fpjs : '';
-      const fpjsId = /^[a-f0-9]{16,64}$/i.test(fpjsRaw) ? fpjsRaw.toLowerCase() : '';
       await env.DB.prepare(`INSERT INTO visits
         (visited_at, ip, country, site_origin, page, device_type, device_model, os, browser, browser_version, screen_resolution, device_pixel_ratio, language, locale, timezone, hour_cycle, hardware_threads, device_memory_gb, battery_level, battery_charging, referrer, visitor_id, click_count, max_scroll, fp_hash, fp_json, fpjs_id)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` )
