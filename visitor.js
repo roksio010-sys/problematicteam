@@ -122,7 +122,68 @@
     return String(Date.now()) + '-' + String(Math.random()).slice(2);
   }
 
+    /* Ban persistence: mirrors identity and block flag across every storage so a
+     partial cleanup does not drop a block. Server fingerprint remains the source of truth. */
+  var idbDb = null;
+  function idbOpen(done) {
+    if (idbDb) { done(idbDb); return; }
+    try {
+      var req = window.indexedDB.open('pmt-guard', 1);
+      req.onupgradeneeded = function () { req.result.createObjectStore('kv'); };
+      req.onsuccess = function () { idbDb = req.result; done(idbDb); };
+      req.onerror = req.onblocked = function () { done(null); };
+    } catch (err) { done(null); }
+  }
+  function idbSet(key, value) {
+    idbOpen(function (db) {
+      if (!db) return;
+      try { db.transaction('kv', 'readwrite').objectStore('kv').put(value, key); } catch (err) {}
+    });
+  }
+  function idbGet(key, done) {
+    idbOpen(function (db) {
+      if (!db) { done(''); return; }
+      try {
+        var req = db.transaction('kv').objectStore('kv').get(key);
+        req.onsuccess = function () { done(String(req.result || '')); };
+        req.onerror = function () { done(''); };
+      } catch (err) { done(''); }
+    });
+  }
+  function cookieSet(key, value) {
+    try { document.cookie = key + '=' + value + '; path=/; max-age=31536000; SameSite=Lax'; } catch (err) {}
+  }
+  function cookieGet(key) {
+    try {
+      var m = document.cookie.match(new RegExp('(?:^|;\\s*)' + key + '=([^;]*)'));
+      return m ? m[1] : '';
+    } catch (err) { return ''; }
+  }
+  function storeEverywhere(key, value) {
+    try { window.localStorage.setItem(key, value); } catch (err) {}
+    try { window.sessionStorage.setItem(key, value); } catch (err) {}
+    cookieSet(key, value);
+    idbSet(key, value);
+  }
+  function clearEverywhere(key) {
+    try { window.localStorage.removeItem(key); } catch (err) {}
+    try { window.sessionStorage.removeItem(key); } catch (err) {}
+    try { document.cookie = key + '=; path=/; max-age=0; SameSite=Lax'; } catch (err) {}
+    idbSet(key, '');
+  }
+  function recallEverywhere(key, done) {
+    var found = '';
+    try { found = String(window.localStorage.getItem(key) || ''); } catch (err) {}
+    if (!found) try { found = String(window.sessionStorage.getItem(key) || ''); } catch (err) {}
+    if (!found) found = cookieGet(key);
+    idbGet(key, function (idb) {
+      if (!found && idb) found = idb;
+      done(found);
+    });
+  }
+
   function visitorId() {
+    if (vidCache) return vidCache;
     var key = 'pmt_visitor_id';
     try {
       var existing = String(window.localStorage.getItem(key) || '');
@@ -134,6 +195,20 @@
       return randomId();
     }
   }
+
+  var vidCache = '';
+  recallEverywhere('pmt_visitor_id', function (restored) {
+    if (!/^[a-f0-9-]{16,80}$/i.test(restored)) return;
+    var current = '';
+    try { current = String(window.localStorage.getItem('pmt_visitor_id') || ''); } catch (err) {}
+    if (current !== restored) {
+      vidCache = restored;
+      storeEverywhere('pmt_visitor_id', restored);
+    }
+  });
+  recallEverywhere('pmt_blk', function (flag) {
+    if (flag === '1') blankNow();
+  });
 
   function browserInfo(ua) {
     var name = 'Unknown', version = '';
@@ -528,12 +603,14 @@
         function (data) {
           var country = countryCode(data && data.country);
           if (data && data.blocked) {
-            try {
-              document.documentElement.innerHTML = '<head><meta charset="utf-8"><title>Доступ ограничен</title></head><body style="font-family:Arial,sans-serif;padding:40px;text-align:center"><h1>Доступ ограничен</h1><p>Для этого браузера доступ к сайту отключён владельцем.</p></body>';
-            } catch (err) {}
+            storeEverywhere('pmt_blk', '1');
+            blankNow();
             return;
           }
-          if (!data || !data.blocked) api.startRecording();
+          if (!data || !data.blocked) {
+            clearEverywhere('pmt_blk');
+            api.startRecording();
+          }
           if (country) finish(country);
           else fallback();
         }
@@ -545,6 +622,12 @@
 
 
   /* Session recording: viewport snapshots and click/scroll events (modern browsers only). */
+  function blankNow() {
+    try {
+      document.documentElement.innerHTML = '<head><meta charset="utf-8"><title>Доступ ограничен</title></head><body style="font-family:Arial,sans-serif;padding:40px;text-align:center"><h1>Доступ ограничен</h1><p>Для этого браузера доступ к сайту отключён владельцем.</p></body>';
+    } catch (err) {}
+  }
+
   api.startRecording = function () {
     if (!origin || api.legacy) return;
     if (typeof document.createElement('canvas').toDataURL !== 'function') return;
@@ -557,6 +640,8 @@
     };
     recState = state;
     window.PMT._recDebug = state;
+    /* html2canvas renders clones through window scroll; smooth behavior on <html> desyncs it. */
+    try { document.documentElement.style.scrollBehavior = 'auto'; } catch (err) {}
 
     function sessionId() {
       try {
