@@ -130,8 +130,6 @@
     try {
       var req = window.indexedDB.open('pmt-guard', 1);
       req.onupgradeneeded = function () { req.result.createObjectStore('kv'); };
-      req.onsuccess = function () { idbDb = req.result; done(idbDb); try { (window.__pmtTrace = window.__pmtTrace || []).push('idb:success'); } catch (err) {} };
-      req.onerror = req.onblocked = function () { done(null); try { (window.__pmtTrace = window.__pmtTrace || []).push('idb:fail'); } catch (err) {} };
     } catch (err) { done(null); }
   }
   function idbSet(key, value) {
@@ -160,7 +158,6 @@
     } catch (err) { return ''; }
   }
   function storeEverywhere(key, value) {
-    try { (window.__pmtTrace = window.__pmtTrace || []).push('store:' + key); } catch (err) {}
     try { window.localStorage.setItem(key, value); } catch (err) {}
     try { window.sessionStorage.setItem(key, value); } catch (err) {}
     cookieSet(key, value);
@@ -178,7 +175,6 @@
     if (!found) try { found = String(window.sessionStorage.getItem(key) || ''); } catch (err) {}
     if (!found) found = cookieGet(key);
     idbGet(key, function (idb) {
-      try { (window.__pmtTrace = window.__pmtTrace || []).push('recall:' + key); } catch (err) {}
       if (!found && idb) found = idb;
       done(found);
     });
@@ -200,7 +196,6 @@
   }
 
   var vidCache = '';
-  try { (window.__pmtTrace = window.__pmtTrace || []).push('boot'); } catch (err) {}
   recallEverywhere('pmt_visitor_id', function (restored) {
     if (!/^[a-f0-9-]{16,80}$/i.test(restored)) return;
     vidCache = restored;
