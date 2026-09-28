@@ -406,6 +406,14 @@ async function handle(request, env) {
       if (f2 && f2 !== f1) await env.DB.prepare('DELETE FROM blocked_fingerprints WHERE fp_hash = ?').bind(f2).run();
       if (f3 && f3 !== f1 && f3 !== f2) await env.DB.prepare('DELETE FROM blocked_fingerprints WHERE fp_hash = ?').bind(f3).run();
       if (fpRow && fpRow.ip) freedIps.add(String(fpRow.ip));
+      const allIps = await env.DB.prepare('SELECT DISTINCT ip FROM visits WHERE visitor_id = ? AND ip IS NOT NULL').bind(visitorId).all();
+      for (const r of (allIps.results || [])) if (r.ip) freedIps.add(String(r.ip));
+      const allKeys = await env.DB.prepare("SELECT DISTINCT device_key FROM visits WHERE visitor_id = ? AND device_key != ''").bind(visitorId).all();
+      for (const r of (allKeys.results || [])) if (r.device_key) freedKeys.add(String(r.device_key).toLowerCase());
+      for (const ip of Array.from(freedIps)) {
+        const sub = subnetOf(String(ip));
+        if (sub) await env.DB.prepare('DELETE FROM blocked_subnets WHERE subnet = ?').bind(sub).run();
+      }
       const dkRow = await env.DB.prepare("SELECT device_key FROM visits WHERE visitor_id = ? AND device_key != '' ORDER BY id DESC LIMIT 1").bind(visitorId).first();
       const freedKeys = new Set();
       if (dkRow && dkRow.device_key) freedKeys.add(String(dkRow.device_key).toLowerCase());
