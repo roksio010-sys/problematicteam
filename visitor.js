@@ -653,6 +653,11 @@
         try {
           window.html2canvas(document.documentElement, options).then(function (canvas) {
             state.capturing = false;
+            var expectedH = Math.round((doc.scrollHeight || 0) * options.scale);
+            if (!canvas.height || (expectedH && (canvas.height < expectedH * 0.9 || canvas.height > expectedH * 1.15))) {
+              schedule(1200);
+              return;
+            }
             var data = shrink(canvas, scroll[0]);
             if (!data) return;
             if (event) {
