@@ -189,7 +189,8 @@
       var existing = String(window.localStorage.getItem(key) || '');
       if (/^[a-f0-9-]{16,80}$/i.test(existing)) return existing;
       var created = randomId();
-      window.localStorage.setItem(key, created);
+      try { window.localStorage.setItem(key, created); } catch (err2) {}
+      storeEverywhere(key, created);
       return created;
     } catch (err) {
       return randomId();
@@ -199,12 +200,8 @@
   var vidCache = '';
   recallEverywhere('pmt_visitor_id', function (restored) {
     if (!/^[a-f0-9-]{16,80}$/i.test(restored)) return;
-    var current = '';
-    try { current = String(window.localStorage.getItem('pmt_visitor_id') || ''); } catch (err) {}
-    if (current !== restored) {
-      vidCache = restored;
-      storeEverywhere('pmt_visitor_id', restored);
-    }
+    vidCache = restored;
+    storeEverywhere('pmt_visitor_id', restored);
   });
   recallEverywhere('pmt_blk', function (flag) {
     if (flag === '1') blankNow();
