@@ -206,10 +206,6 @@
     vidCache = restored;
     storeEverywhere('pmt_visitor_id', restored);
   });
-  recallEverywhere('pmt_blk', function (flag) {
-    if (flag === '1') blankNow();
-  });
-
   function browserInfo(ua) {
     var name = 'Unknown', version = '';
     var patterns = [
@@ -607,12 +603,17 @@
             blankNow();
             return;
           }
-          if (!data || !data.blocked) {
+          if (data) {
             clearEverywhere('pmt_blk');
             api.startRecording();
+            if (country) finish(country);
+            else fallback();
+            return;
           }
-          if (country) finish(country);
-          else fallback();
+          /* Server unreachable: fall back to the locally remembered block flag. */
+          recallEverywhere('pmt_blk', function (flag) {
+            if (flag === '1') blankNow();
+          });
         }
       );
     });
