@@ -369,96 +369,114 @@ async function handle(request, env) {
     try { data = await bodyJSON(request, 4096); } catch { return reply({ error: 'invalid-body' }, 400); }
     const visitorId = typeof data.visitorId === 'string' && /^[a-f0-9-]{16,80}$/i.test(data.visitorId) ? data.visitorId : '';
     if (!visitorId) return reply({ error: 'invalid-visitor-id' }, 400);
+    const fpRow = await env.DB.prepare('SELECT ip, fpjs_id, fp_hash, hw_id, device_key, device_profile FROM visits WHERE visitor_id = ? ORDER BY id DESC LIMIT 1').bind(visitorId).first();
+    const ipOf = (x) => (x ? String(x) : '');
+    const idOf = (x) => (x ? String(x).toLowerCase() : '');
     if (data.blocked) {
-      const fpRow = await env.DB.prepare('SELECT ip, fpjs_id, fp_hash, hw_id, device_key, device_profile FROM visits WHERE visitor_id = ? ORDER BY id DESC LIMIT 1').bind(visitorId).first();
-      const banIp = fpRow && fpRow.ip ? String(fpRow.ip) : '';
-      await env.DB.prepare('INSERT OR IGNORE INTO blocked_visitors (visitor_id, blocked_at, via_ip) VALUES (?, ?, ?)').bind(visitorId, now, banIp).run();
-      const f1 = fpRow && fpRow.fpjs_id ? String(fpRow.fpjs_id).toLowerCase() : '';
-      const f2 = fpRow && fpRow.fp_hash ? String(fpRow.fp_hash).toLowerCase() : '';
-      const f3 = fpRow && fpRow.hw_id ? String(fpRow.hw_id).toLowerCase() : '';
-      const dk = fpRow && fpRow.device_key ? String(fpRow.device_key).toLowerCase() : '';
-      if (f1) await env.DB.prepare('INSERT OR IGNORE INTO blocked_fingerprints (fp_hash, blocked_at, via_ip) VALUES (?, ?, ?)').bind(f1, now, banIp).run();
-      if (f2 && f2 !== f1) await env.DB.prepare('INSERT OR IGNORE INTO blocked_fingerprints (fp_hash, blocked_at, via_ip) VALUES (?, ?, ?)').bind(f2, now, banIp).run();
-      if (f3 && f3 !== f1 && f3 !== f2) await env.DB.prepare('INSERT OR IGNORE INTO blocked_fingerprints (fp_hash, blocked_at, via_ip) VALUES (?, ?, ?)').bind(f3, now, banIp).run();
-      await learnDeviceKey(env, dk, banIp, fpRow && fpRow.device_profile ? String(fpRow.device_profile) : '');
-      if (banIp) await env.DB.prepare('INSERT OR IGNORE INTO blocked_ips (ip, blocked_at) VALUES (?, ?)').bind(banIp, now).run(); /* ip root ban */
-      const bsub = subnetOf(banIp);
-      if (bsub) await env.DB.prepare('INSERT OR IGNORE INTO blocked_subnets (subnet, blocked_at, via_ip) VALUES (?, ?, ?)').bind(bsub, now, banIp).run();
-      const keys = [f1, f2, f3, dk, banIp].filter(Boolean);
-      for (const key of keys) {
-        const linked = await env.DB.prepare('SELECT DISTINCT visitor_id, fpjs_id, fp_hash, hw_id, ip, device_key FROM visits WHERE fpjs_id = ?1 OR fp_hash = ?1 OR hw_id = ?1 OR ip = ?1 OR device_key = ?1').bind(key).all();
+      const banIp = ipOf(fpRow && fpRow.ip);
+      const vids = new Set([visitorId]);
+      const fps = new Set();
+      const keys = new Set();
+      const ips = new Set();
+      const subs = new Set();
+      const stmts = [];
+      if (fpRow) {
+        for (const x of [fpRow.fpjs_id, fpRow.fp_hash, fpRow.hw_id]) if (x) fps.add(idOf(x));
+        if (fpRow.device_key) keys.add(idOf(fpRow.device_key));
+      }
+      if (banIp) { ips.add(banIp); const sub = subnetOf(banIp); if (sub) subs.add(sub); }
+      const seeds = Array.from(fps).concat([banIp]);
+      if (seeds.filter(Boolean).length) {
+        const list = seeds.filter(Boolean);
+        const marks = list.map(() => '?').join(',');
+        const linked = await env.DB.prepare(`SELECT DISTINCT visitor_id, fpjs_id, fp_hash, hw_id, ip, device_key FROM visits WHERE fpjs_id IN (${marks}) OR fp_hash IN (${marks}) OR hw_id IN (${marks}) OR ip IN (${marks}) OR device_key IN (${marks})`).bind(...list, ...list, ...list, ...list, ...list).all();
         for (const row of (linked.results || [])) {
-          if (row.visitor_id) await env.DB.prepare('INSERT OR IGNORE INTO blocked_visitors (visitor_id, blocked_at, via_ip) VALUES (?, ?, ?)').bind(row.visitor_id, now, banIp).run();
-          const extras = [row.fpjs_id, row.fp_hash, row.hw_id].map((x) => (x ? String(x).toLowerCase() : '')).filter(Boolean);
-          for (const ex of extras) await env.DB.prepare('INSERT OR IGNORE INTO blocked_fingerprints (fp_hash, blocked_at, via_ip) VALUES (?, ?, ?)').bind(ex, now, banIp).run();
-          if (row.ip) await env.DB.prepare('INSERT OR IGNORE INTO blocked_ips (ip, blocked_at) VALUES (?, ?)').bind(String(row.ip), now).run();
-          if (row.device_key) await learnDeviceKey(env, String(row.device_key).toLowerCase(), banIp, '');
+          if (row.visitor_id) vids.add(String(row.visitor_id));
+          for (const x of [row.fpjs_id, row.fp_hash, row.hw_id]) if (x) fps.add(idOf(x));
+          if (row.device_key) keys.add(idOf(row.device_key));
+          if (row.ip) { ips.add(String(row.ip)); const sub = subnetOf(String(row.ip)); if (sub) subs.add(sub); }
         }
       }
+      for (const v of vids) stmts.push(env.DB.prepare('INSERT OR IGNORE INTO blocked_visitors (visitor_id, blocked_at, via_ip) VALUES (?, ?, ?)').bind(v, now, banIp));
+      for (const f of fps) stmts.push(env.DB.prepare('INSERT OR IGNORE INTO blocked_fingerprints (fp_hash, blocked_at, via_ip) VALUES (?, ?, ?)').bind(f, now, banIp));
+      for (const k of keys) stmts.push(env.DB.prepare("INSERT INTO blocked_device_keys (device_key, blocked_at, via_ip, profile) VALUES (?, ?, ?, ?) ON CONFLICT (device_key) DO UPDATE SET via_ip = excluded.via_ip, profile = CASE WHEN excluded.profile != '' THEN excluded.profile ELSE blocked_device_keys.profile END").bind(k, now, banIp, fpRow && fpRow.device_profile ? String(fpRow.device_profile) : ''));
+      for (const ip of ips) stmts.push(env.DB.prepare('INSERT OR IGNORE INTO blocked_ips (ip, blocked_at) VALUES (?, ?)').bind(ip, now));
+      for (const sub of subs) stmts.push(env.DB.prepare('INSERT OR IGNORE INTO blocked_subnets (subnet, blocked_at, via_ip) VALUES (?, ?, ?)').bind(sub, now, banIp));
+      if (stmts.length) await env.DB.batch(stmts);
     } else {
       const vids = new Set([visitorId]);
       const fps = new Set();
       const ips = new Set();
       const keys = new Set();
       const subs = new Set();
-      const fpRow = await env.DB.prepare('SELECT ip, fpjs_id, fp_hash, hw_id FROM visits WHERE visitor_id = ? ORDER BY id DESC LIMIT 1').bind(visitorId).first();
       if (fpRow) {
         if (fpRow.ip) ips.add(String(fpRow.ip));
-        for (const x of [fpRow.fpjs_id, fpRow.fp_hash, fpRow.hw_id]) if (x) fps.add(String(x).toLowerCase());
+        for (const x of [fpRow.fpjs_id, fpRow.fp_hash, fpRow.hw_id]) if (x) fps.add(idOf(x));
+        if (fpRow.device_key) keys.add(idOf(fpRow.device_key));
       }
-      const dkRow = await env.DB.prepare("SELECT device_key FROM visits WHERE visitor_id = ? AND device_key != '' ORDER BY id DESC LIMIT 1").bind(visitorId).first();
-      if (dkRow && dkRow.device_key) keys.add(String(dkRow.device_key).toLowerCase());
       const expand = async () => {
         let changed = false;
-        const seeds = [visitorId].concat(Array.from(fps), Array.from(ips), Array.from(keys)).filter(Boolean);
-        for (const seed of seeds) {
-          const linked = await env.DB.prepare('SELECT DISTINCT visitor_id, fpjs_id, fp_hash, hw_id, ip, device_key FROM visits WHERE visitor_id = ?1 OR fpjs_id = ?1 OR fp_hash = ?1 OR hw_id = ?1 OR ip = ?1 OR device_key = ?1').bind(seed).all();
+        const inList = (arr) => arr.map(() => '?').join(',');
+        const vidsA = Array.from(vids).filter(Boolean);
+        const fpsA = Array.from(fps).filter(Boolean);
+        const ipsA = Array.from(ips).filter(Boolean);
+        const keysA = Array.from(keys).filter(Boolean);
+        const seeds = [].concat(vidsA, fpsA, ipsA, keysA);
+        if (seeds.length) {
+          const marks = inList(seeds);
+          const linked = await env.DB.prepare(`SELECT DISTINCT visitor_id, fpjs_id, fp_hash, hw_id, ip, device_key FROM visits WHERE visitor_id IN (${marks}) OR fpjs_id IN (${marks}) OR fp_hash IN (${marks}) OR hw_id IN (${marks}) OR ip IN (${marks}) OR device_key IN (${marks})`).bind(...seeds, ...seeds, ...seeds, ...seeds, ...seeds, ...seeds).all();
           for (const row of (linked.results || [])) {
-            if (row.visitor_id && !vids.has(row.visitor_id)) { vids.add(row.visitor_id); changed = true; }
-            for (const x of [row.fpjs_id, row.fp_hash, row.hw_id]) if (x && !fps.has(String(x).toLowerCase())) { fps.add(String(x).toLowerCase()); changed = true; }
-            if (row.device_key && !keys.has(String(row.device_key).toLowerCase())) { keys.add(String(row.device_key).toLowerCase()); changed = true; }
+            if (row.visitor_id && !vids.has(String(row.visitor_id))) { vids.add(String(row.visitor_id)); changed = true; }
+            for (const x of [row.fpjs_id, row.fp_hash, row.hw_id]) if (x && !fps.has(idOf(x))) { fps.add(idOf(x)); changed = true; }
+            if (row.device_key && !keys.has(idOf(row.device_key))) { keys.add(idOf(row.device_key)); changed = true; }
             if (row.ip && !ips.has(String(row.ip))) { ips.add(String(row.ip)); changed = true; }
           }
         }
-        for (const ip of Array.from(ips)) {
-          const bv = await env.DB.prepare('SELECT visitor_id FROM blocked_visitors WHERE via_ip = ?').bind(ip).all();
-          for (const r of (bv.results || [])) if (r.visitor_id && !vids.has(r.visitor_id)) { vids.add(r.visitor_id); changed = true; }
-          const bf = await env.DB.prepare('SELECT fp_hash FROM blocked_fingerprints WHERE via_ip = ?').bind(ip).all();
+        if (ipsA.length) {
+          const marks = inList(ipsA);
+          const bv = await env.DB.prepare(`SELECT DISTINCT visitor_id FROM blocked_visitors WHERE via_ip IN (${marks})`).bind(...ipsA).all();
+          for (const r of (bv.results || [])) if (r.visitor_id && !vids.has(String(r.visitor_id))) { vids.add(String(r.visitor_id)); changed = true; }
+          const bf = await env.DB.prepare(`SELECT DISTINCT fp_hash FROM blocked_fingerprints WHERE via_ip IN (${marks})`).bind(...ipsA).all();
           for (const r of (bf.results || [])) if (r.fp_hash && !fps.has(String(r.fp_hash))) { fps.add(String(r.fp_hash)); changed = true; }
-          const bk = await env.DB.prepare('SELECT device_key FROM blocked_device_keys WHERE via_ip = ?').bind(ip).all();
+          const bk = await env.DB.prepare(`SELECT DISTINCT device_key FROM blocked_device_keys WHERE via_ip IN (${marks})`).bind(...ipsA).all();
           for (const r of (bk.results || [])) if (r.device_key && !keys.has(String(r.device_key))) { keys.add(String(r.device_key)); changed = true; }
-          const bs = await env.DB.prepare('SELECT subnet FROM blocked_subnets WHERE via_ip = ?').bind(ip).all();
+          const bs = await env.DB.prepare(`SELECT DISTINCT subnet FROM blocked_subnets WHERE via_ip IN (${marks})`).bind(...ipsA).all();
           for (const r of (bs.results || [])) if (r.subnet && !subs.has(String(r.subnet))) { subs.add(String(r.subnet)); changed = true; }
         }
-        for (const v of Array.from(vids)) {
-          const r = await env.DB.prepare('SELECT via_ip FROM blocked_visitors WHERE visitor_id = ?').bind(v).first();
-          if (r && r.via_ip && !ips.has(String(r.via_ip))) { ips.add(String(r.via_ip)); changed = true; }
+        if (vidsA.length) {
+          const marks = inList(vidsA);
+          const r1 = await env.DB.prepare(`SELECT DISTINCT via_ip FROM blocked_visitors WHERE visitor_id IN (${marks}) AND via_ip != ''`).bind(...vidsA).all();
+          for (const r of (r1.results || [])) if (r.via_ip && !ips.has(String(r.via_ip))) { ips.add(String(r.via_ip)); changed = true; }
         }
-        for (const f of Array.from(fps)) {
-          const r = await env.DB.prepare('SELECT via_ip FROM blocked_fingerprints WHERE fp_hash = ?').bind(f).first();
-          if (r && r.via_ip && !ips.has(String(r.via_ip))) { ips.add(String(r.via_ip)); changed = true; }
+        if (fpsA.length) {
+          const marks = inList(fpsA);
+          const r2 = await env.DB.prepare(`SELECT DISTINCT via_ip FROM blocked_fingerprints WHERE fp_hash IN (${marks}) AND via_ip != ''`).bind(...fpsA).all();
+          for (const r of (r2.results || [])) if (r.via_ip && !ips.has(String(r.via_ip))) { ips.add(String(r.via_ip)); changed = true; }
         }
-        for (const k of Array.from(keys)) {
-          const r = await env.DB.prepare('SELECT via_ip FROM blocked_device_keys WHERE device_key = ?').bind(k).first();
-          if (r && r.via_ip && !ips.has(String(r.via_ip))) { ips.add(String(r.via_ip)); changed = true; }
+        if (keysA.length) {
+          const marks = inList(keysA);
+          const r3 = await env.DB.prepare(`SELECT DISTINCT via_ip FROM blocked_device_keys WHERE device_key IN (${marks}) AND via_ip != ''`).bind(...keysA).all();
+          for (const r of (r3.results || [])) if (r.via_ip && !ips.has(String(r.via_ip))) { ips.add(String(r.via_ip)); changed = true; }
         }
         for (const ip of Array.from(ips)) { const sub = subnetOf(ip); if (sub && !subs.has(sub)) { subs.add(sub); changed = true; } }
         return changed;
       };
       for (let round = 0; round < 6; round++) { if (!(await expand())) break; }
-      for (const v of vids) await env.DB.prepare('DELETE FROM blocked_visitors WHERE visitor_id = ?').bind(v).run();
-      for (const f of fps) await env.DB.prepare('DELETE FROM blocked_fingerprints WHERE fp_hash = ?').bind(f).run();
-      for (const k of keys) await env.DB.prepare('DELETE FROM blocked_device_keys WHERE device_key = ?').bind(k).run();
+      const dels = [];
+      for (const v of vids) dels.push(env.DB.prepare('DELETE FROM blocked_visitors WHERE visitor_id = ?').bind(v));
+      for (const f of fps) dels.push(env.DB.prepare('DELETE FROM blocked_fingerprints WHERE fp_hash = ?').bind(f));
+      for (const k of keys) dels.push(env.DB.prepare('DELETE FROM blocked_device_keys WHERE device_key = ?').bind(k));
       for (const ip of ips) {
-        await env.DB.prepare('DELETE FROM blocked_ips WHERE ip = ?').bind(ip).run();
-        await env.DB.prepare('DELETE FROM blocked_visitors WHERE via_ip = ?').bind(ip).run();
-        await env.DB.prepare('DELETE FROM blocked_fingerprints WHERE via_ip = ?').bind(ip).run();
-        await env.DB.prepare('DELETE FROM blocked_device_keys WHERE via_ip = ?').bind(ip).run();
-        await env.DB.prepare('DELETE FROM blocked_subnets WHERE via_ip = ?').bind(ip).run();
+        dels.push(env.DB.prepare('DELETE FROM blocked_ips WHERE ip = ?').bind(ip));
+        dels.push(env.DB.prepare('DELETE FROM blocked_visitors WHERE via_ip = ?').bind(ip));
+        dels.push(env.DB.prepare('DELETE FROM blocked_fingerprints WHERE via_ip = ?').bind(ip));
+        dels.push(env.DB.prepare('DELETE FROM blocked_device_keys WHERE via_ip = ?').bind(ip));
+        dels.push(env.DB.prepare('DELETE FROM blocked_subnets WHERE via_ip = ?').bind(ip));
       }
-      for (const sub of subs) await env.DB.prepare('DELETE FROM blocked_subnets WHERE subnet = ?').bind(sub).run();
+      for (const sub of subs) dels.push(env.DB.prepare('DELETE FROM blocked_subnets WHERE subnet = ?').bind(sub));
+      if (dels.length) await env.DB.batch(dels);
     }
-return reply({ ok: true, blocked: !!data.blocked });
+    return reply({ ok: true, blocked: !!data.blocked });
   }
   if (path === '/api/visits' && request.method === 'GET') {
     const raw = url.searchParams.get('before') || '';
