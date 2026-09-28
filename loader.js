@@ -10,7 +10,7 @@
   }
   function load(file, done) {
     var script = document.createElement('script'), finished = false;
-    script.src = file + '?v=20260926-fp1';
+    script.src = file + '?v=20260928-fp2';
     script.async = false;
     script.onload = script.onreadystatechange = function () {
       if (!finished && (!script.readyState || /loaded|complete/.test(script.readyState))) {

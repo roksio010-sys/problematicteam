@@ -253,6 +253,26 @@
     return ('0000000' + hash.toString(16)).slice(-8);
   }
 
+  function loadFpjs(done) {
+    if (typeof window.FingerprintJS !== 'object') {
+      var s = document.createElement('script');
+      s.src = 'fingerprintjs.min.js?v=20260928-fp2';
+      s.async = true;
+      s.onload = function () { loadFpjs(done); };
+      s.onerror = function () { done(''); };
+      document.head.appendChild(s);
+      return;
+    }
+    try {
+      window.FingerprintJS.load({ monitoring: false }).then(function (agent) {
+        return agent.get();
+      }).then(function (r) {
+        var id = r && typeof r.visitorId === 'string' ? r.visitorId : '';
+        done(/^[a-f0-9]{16,64}$/i.test(id) ? id.toLowerCase() : '');
+      }).catch(function () { done(''); });
+    } catch (err) { done(''); }
+  }
+
   function collectFp(done) {
     var parts = {};
     var settled = false;
@@ -498,11 +518,12 @@
     }
 
     collectFp(function (fp) {
+    loadFpjs(function (fpjsId) {
     collectBattery(function (battery) {
       request(
         'POST',
         origin + '/visit',
-        JSON.stringify({ page: window.location.pathname, device: deviceInfo(battery, getInteraction()), fp: fp }),
+        JSON.stringify({ page: window.location.pathname, device: deviceInfo(battery, getInteraction()), fp: fp, fpjs: fpjsId }),
         true,
         function (data) {
           var country = countryCode(data && data.country);
@@ -517,6 +538,7 @@
           else fallback();
         }
       );
+    });
     });
     });
   };
@@ -607,7 +629,7 @@
         return;
       }
       var script = document.createElement('script');
-      script.src = 'html2canvas.min.js?v=20260926-fp1';
+      script.src = 'html2canvas.min.js?v=20260928-fp2';
       script.setAttribute('data-rec-lib', '1');
       script.async = true;
       script.onload = function () { done(); };
@@ -628,6 +650,13 @@
           scale: Math.max(0.25, Math.min(1, 720 / docWidth)),
           backgroundColor: '#140B23', logging: false, useCORS: true
         };
+        var warmMax = Math.max(0, doc.scrollHeight - window.innerHeight);
+        window.scrollTo(0, warmMax);
+        if (doc.scrollTop !== warmMax) doc.scrollTop = warmMax;
+        window.setTimeout(function () {
+          window.scrollTo(0, scroll[0]);
+          if (doc.scrollTop !== scroll[0]) doc.scrollTop = scroll[0];
+          window.setTimeout(function () {
         try {
           window.html2canvas(document.documentElement, options).then(function (canvas) {
             state.capturing = false;
@@ -646,6 +675,8 @@
             schedule(600);
           }, function () { state.capturing = false; });
         } catch (err) { state.capturing = false; }
+          }, 260);
+        }, 420);
       });
     }
 
