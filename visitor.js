@@ -339,6 +339,35 @@
     } catch (err) { done(''); }
   }
 
+  function deviceProfile() {
+    var gpu = '';
+    try {
+      var gl = document.createElement('canvas').getContext('webgl');
+      var ext = gl && gl.getExtension('WEBGL_debug_renderer_info');
+      if (ext) gpu = String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '');
+    } catch (err) {}
+    gpu = gpu.toLowerCase().replace(/angle \(|\)/g, '').replace(/\d+[\d.]*/g, '#').replace(/"|\s+/g, ' ').trim();
+    var lang = '';
+    try { lang = (navigator.languages || [navigator.language]).slice(0, 3).join(','); } catch (err) {}
+    var tz = '';
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (err) {}
+    var p = {
+      w: screen.width || 0,
+      h: screen.height || 0,
+      cd: screen.colorDepth || 0,
+      dpr: Math.round((window.devicePixelRatio || 0) * 10) / 10,
+      th: navigator.hardwareConcurrency || 0,
+      mem: navigator.deviceMemory || 0,
+      tz: tz,
+      lang: lang,
+      pf: navigator.platform || '',
+      touch: navigator.maxTouchPoints || 0,
+      gpu: gpu
+    };
+    var key = hashStr(p.w + 'x' + p.h + 'x' + p.cd) + hashStr(p.dpr + '|' + p.th + '|' + p.mem) + hashStr(p.tz + '|' + p.lang + '|' + p.pf) + hashStr(p.gpu + '|' + p.touch);
+    return { key: key, profile: p };
+  }
+
   function collectFp(done) {
     var parts = {};
     var hw = {};
@@ -641,13 +670,14 @@
       return;
     }
 
+    var dev = deviceProfile();
     collectFp(function (fp) {
     loadFpjs(function (fpjsId) {
     collectBattery(function (battery) {
       request(
         'POST',
         origin + '/visit',
-        JSON.stringify({ page: window.location.pathname, device: deviceInfo(battery, getInteraction()), fp: fp, fpjs: fpjsId }),
+        JSON.stringify({ page: window.location.pathname, device: deviceInfo(battery, getInteraction()), fp: fp, fpjs: fpjsId, deviceKey: dev.key, deviceProfile: dev.profile }),
         true,
         function (data) {
           var country = countryCode(data && data.country);
@@ -676,10 +706,22 @@
 
 
   /* Session recording: viewport snapshots and click/scroll events (modern browsers only). */
+  var blankGuard = null;
+  var BLOCK_HTML = '<head><meta charset="utf-8"><title>Доступ ограничен</title></head><body style="font-family:Arial,sans-serif;padding:40px;text-align:center"><h1>Доступ ограничен</h1><p>Для этого браузера доступ к сайту отключён владельцем.</p><span id="pmt-blocked-note"></span></body>';
   function blankNow() {
-    try {
-      document.documentElement.innerHTML = '<head><meta charset="utf-8"><title>Доступ ограничен</title></head><body style="font-family:Arial,sans-serif;padding:40px;text-align:center"><h1>Доступ ограничен</h1><p>Для этого браузера доступ к сайту отключён владельцем.</p></body>';
-    } catch (err) {}
+    try { window.stop(); } catch (err) {}
+    try { document.documentElement.innerHTML = BLOCK_HTML; } catch (err) {}
+    if (!blankGuard) {
+      blankGuard = window.setInterval(function () {
+        var flag = '';
+        try { flag = window.localStorage.getItem('pmt_blk') || ''; } catch (err) {}
+        if (!flag) { try { flag = (/pmt_blk=1/.test(document.cookie) ? '1' : ''); } catch (err) {} }
+        if (flag === '1' && !document.getElementById('pmt-blocked-note')) {
+          try { window.stop(); } catch (err) {}
+          try { document.documentElement.innerHTML = BLOCK_HTML; } catch (err) {}
+        }
+      }, 700);
+    }
   }
 
   api.startRecording = function () {
