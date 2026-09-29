@@ -435,30 +435,24 @@ async function handle(request, env) {
       if (stmts.length) await env.DB.batch(stmts);
     } else {
       const vids = new Set([visitorId]);
-      const fps = new Set();
-      const ips = new Set();
-      const keys = new Set();
-      const subs = new Set();
+      const fps = new Set(); const ips = new Set(); const keys = new Set(); const subs = new Set();
       if (fpRow) {
         if (fpRow.ip) ips.add(String(fpRow.ip));
         for (const x of [fpRow.fpjs_id, fpRow.fp_hash, fpRow.hw_id]) if (x) fps.add(idOf(x));
         if (fpRow.device_key) keys.add(idOf(fpRow.device_key));
       }
       const expand = async () => {
-        let changed = false;
-        const absorb = (v, kind) => {
-          if (!v) return;
-          const val = String(v);
-          if (kind === 'vid' && !vids.has(val)) { vids.add(val); changed = true; }
-          else if (kind === 'fp' && !fps.has(val)) { fps.add(val); changed = true; }
-          else if (kind === 'key' && !keys.has(val)) { keys.add(val); changed = true; }
-          else if (kind === 'ip' && !ips.has(val)) { ips.add(val); changed = true; }
-          else if (kind === 'sub' && !subs.has(val)) { subs.add(val); changed = true; }
-        };
         const vidsA = Array.from(vids).filter(Boolean);
         const fpsA = Array.from(fps).filter(Boolean);
         const ipsA = Array.from(ips).filter(Boolean);
         const keysA = Array.from(keys).filter(Boolean);
+        const absorb = (v, kind) => {
+          if (!v) return false;
+          const val = String(v);
+          const set = kind === 'vid' ? vids : kind === 'fp' ? fps : kind === 'key' ? keys : kind === 'ip' ? ips : subs;
+          if (set.has(val)) return false;
+          set.add(val); return true;
+        };
         const seeds = [].concat(vidsA, fpsA, ipsA, keysA).filter(Boolean).slice(0, 60);
         for (let ci = 0; ci < seeds.length; ci += 15) {
           const part = seeds.slice(ci, ci + 15);
@@ -486,10 +480,11 @@ async function handle(request, env) {
           const rows = await env.DB.prepare(`SELECT DISTINCT via_ip AS v FROM blocked_visitors WHERE visitor_id IN (${m}) AND via_ip != '' UNION SELECT via_ip AS v FROM blocked_fingerprints WHERE fp_hash IN (${m}) AND via_ip != '' UNION SELECT via_ip AS v FROM blocked_device_keys WHERE device_key IN (${m}) AND via_ip != ''`).bind(...part, ...part, ...part).all();
           for (const r of (rows.results || [])) absorb(r.v, 'ip');
         }
-        for (const ip of Array.from(ips)) { const sub = subnetOf(ip); if (sub) absorb(sub, 'sub'); }
-        return changed;
+        let grew = vids.size > vidsA.length || fps.size > fpsA.length || keys.size > keysA.length || ips.size > ipsA.length;
+        for (const ip of Array.from(ips)) { const sub = subnetOf(ip); if (sub && !subs.has(sub)) { subs.add(sub); grew = true; } }
+        return grew;
       };
-      for (let round = 0; round < 2; round++) { if (!(await expand())) break; }
+      for (let round = 0; round < 4; round++) { if (!(await expand())) break; }
       const dels = [];
       for (const v of vids) dels.push(env.DB.prepare('DELETE FROM blocked_visitors WHERE visitor_id = ?').bind(v));
       for (const f of fps) dels.push(env.DB.prepare('DELETE FROM blocked_fingerprints WHERE fp_hash = ?').bind(f));
@@ -512,11 +507,11 @@ async function handle(request, env) {
     if (!Number.isSafeInteger(before) || before < 1) return reply({ error: 'invalid-cursor' }, 400);
     const result = await env.DB.prepare(`SELECT v.id, v.visited_at, v.ip, v.country, v.site_origin, v.page, v.device_type, v.device_model, v.os, v.browser, v.browser_version, v.screen_resolution, v.device_pixel_ratio, v.language, v.locale, v.timezone, v.hour_cycle, v.hardware_threads, v.device_memory_gb, v.battery_level, v.battery_charging, v.referrer, v.visitor_id, v.click_count, v.max_scroll, v.fp_hash, v.fp_json, v.fpjs_id, v.hw_id, CASE WHEN b.visitor_id IS NULL THEN 0 ELSE 1 END AS blocked, CASE WHEN EXISTS(SELECT 1 FROM blocked_fingerprints bf WHERE bf.fp_hash IN (v.fpjs_id, v.fp_hash, v.hw_id)) THEN 1 ELSE 0 END AS fp_blocked, CASE WHEN bi.ip IS NOT NULL OR EXISTS(SELECT 1 FROM blocked_subnets bs WHERE v.ip LIKE bs.subnet || '%') THEN 1 ELSE 0 END AS ip_blocked
       FROM visits v LEFT JOIN blocked_visitors b ON b.visitor_id = v.visitor_id LEFT JOIN blocked_ips bi ON bi.ip = v.ip
-      WHERE v.id < ? ORDER BY v.id DESC LIMIT 101`)
+      WHERE v.id < ? ORDER BY v.id DESC LIMIT 401`)
       .bind(before).all();
     const rows = result.results || [];
-    const more = rows.length > 100;
-    const visits = rows.slice(0, 100);
+    const more = rows.length > 400;
+    const visits = rows.slice(0, 400);
     return reply({ visits, next: more ? visits[visits.length - 1].id : null });
   }
   if (path === '/api/rec/sessions' && request.method === 'GET') {
@@ -541,11 +536,11 @@ async function handle(request, env) {
       LEFT JOIN blocked_visitors b ON b.visitor_id = g.visitor_id
       GROUP BY g.session_id
       HAVING MAX(g.at) < ?
-      ORDER BY last_at DESC LIMIT 51`)
+      ORDER BY last_at DESC LIMIT 301`)
       .bind(before).all();
     const rows = result.results || [];
-    const more = rows.length > 50;
-    const sessions = rows.slice(0, 50);
+    const more = rows.length > 300;
+    const sessions = rows.slice(0, 300);
     return reply({ sessions, next: more && sessions.length ? sessions[sessions.length - 1].last_at : null });
   }
   if (path === '/api/rec/session' && request.method === 'GET') {
