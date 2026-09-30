@@ -495,7 +495,7 @@ function mountSmoothScroll() {
     const target = document.querySelector(url.hash);
     if (!target) return;
     e.preventDefault();
-    const behavior = window.matchMedia('(pointer: coarse)').matches ? 'auto' : 'smooth';
+    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
     target.scrollIntoView({ behavior, block: 'start' });
     history.pushState(null, '', url.hash);
   });
@@ -506,7 +506,7 @@ function mountSmoothScroll() {
     if (target) {
       window.scrollTo(0, 0);
       requestAnimationFrame(() => {
-        const behavior = window.matchMedia('(pointer: coarse)').matches ? 'auto' : 'smooth';
+        const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
         target.scrollIntoView({ behavior, block: 'start' });
       });
     }
