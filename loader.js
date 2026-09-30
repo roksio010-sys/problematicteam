@@ -10,7 +10,7 @@
   }
   function load(file, done) {
     var script = document.createElement('script'), finished = false;
-    script.src = file + '?v=20260930-scroll';
+    script.src = file + '?v=20260930-langfix1';
     script.async = false;
     script.onload = script.onreadystatechange = function () {
       if (!finished && (!script.readyState || /loaded|complete/.test(script.readyState))) {
@@ -30,7 +30,7 @@
   }
   load('data.js', function () {
     load('site-config.js', function () {
-      load('visitor.js?v=20260930-scroll', function () { load(PMT.legacy ? 'script.legacy.js' : 'script.js?v=20260930-scroll'); });
+      load('visitor.js?v=20260930-langfix1', function () { load(PMT.legacy ? 'script.legacy.js' : 'script.js?v=20260930-langfix1'); });
     });
   });
 }(window, document));
