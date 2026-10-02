@@ -10,7 +10,7 @@
   }
   function load(file, done) {
     var script = document.createElement('script'), finished = false;
-    script.src = file + '?v=20260930-langfix1';
+    script.src = file + '?v=' + (file === 'data.js' ? '20261002-bampi1' : '20260930-langfix1');
     script.async = false;
     script.onload = script.onreadystatechange = function () {
       if (!finished && (!script.readyState || /loaded|complete/.test(script.readyState))) {
@@ -30,7 +30,7 @@
   }
   load('data.js', function () {
     load('site-config.js', function () {
-      load('visitor.js?v=20260930-langfix1', function () { load(PMT.legacy ? 'script.legacy.js' : 'script.js?v=20260930-langfix1'); });
+      load('visitor.js', function () { load(PMT.legacy ? 'script.legacy.js' : 'script.js'); });
     });
   });
 }(window, document));

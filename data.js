@@ -1226,6 +1226,12 @@ var EXTRA_RU = [
         kinescope: "mELox5E8uFTFdvktErLvtT",
         poster: "assets/posters/komnata-razuma.jpg",
         promotion: VASYANICH_PREMIERE
+      },
+      {
+        n: "Реклама",
+        title: "МИР ЧУДЕС БАМПИ",
+        kinescope: "qwE84phgrXU662FNYvLrzX",
+        poster: "assets/posters/mir-chudes-bampi.jpg"
       }
     ]
   })
