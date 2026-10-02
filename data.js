@@ -1019,6 +1019,7 @@ function P(o) {
   }, o, {
     poster: poster,
     trailer: o.trailer ? normEp(PMT.extend({ n: "Трейлер" }, o.trailer), poster) : null,
+    advertisement: o.advertisement ? normEp(PMT.extend({ n: "Реклама" }, o.advertisement), poster) : null,
     episodes: []
   });
   if (o.seasons) {
@@ -1226,14 +1227,14 @@ var EXTRA_RU = [
         kinescope: "mELox5E8uFTFdvktErLvtT",
         poster: "assets/posters/komnata-razuma.jpg",
         promotion: VASYANICH_PREMIERE
-      },
-      {
-        n: "Реклама",
-        title: "МИР ЧУДЕС БАМПИ",
-        kinescope: "qwE84phgrXU662FNYvLrzX",
-        poster: "assets/posters/mir-chudes-bampi.jpg"
       }
-    ]
+    ],
+    advertisement: {
+      n: "Реклама",
+      title: "МИР ЧУДЕС БАМПИ",
+      kinescope: "qwE84phgrXU662FNYvLrzX",
+      poster: "assets/posters/mir-chudes-bampi.jpg?v=20261002-bampi3"
+    }
   })
 ];
 var PROJECTS_UA = [

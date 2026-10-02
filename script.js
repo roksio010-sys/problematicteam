@@ -268,7 +268,7 @@ function closeModal() {
 }
 
 /* ---------- встроенный плеер (страница серии) ---------- */
-function playerMarkup(ep) {
+function playerMarkup(ep, actionLabel) {
   if (ep.mp4 || ep.hls) {
     const mp4 = PMT.safeMedia(ep.mp4), hls = PMT.safeMedia(ep.hls);
     if (mp4 || hls) return '<div class="player"><video controls preload="none" playsinline webkit-playsinline poster="' + PMT.escape(ep.poster || '') + '" style="position:absolute;left:0;top:0;width:100%;height:100%">' +
@@ -276,6 +276,8 @@ function playerMarkup(ep) {
       (hls ? '<source src="' + PMT.escape(hls) + '" type="application/vnd.apple.mpegurl">' : '') + '</video></div>';
   }
   const title = plain(T(ep.title));
+  const frameTitle = actionLabel ? `${actionLabel}: ${title}` : title;
+  const buttonLabel = actionLabel || U('openEpisode');
   if (!ep.kinescope) {
     return `<div class="player player--empty">
       <img src="${ep.poster}" alt="" loading="lazy">
@@ -285,9 +287,9 @@ function playerMarkup(ep) {
       </div>
     </div>`;
   }
-  return `<div class="player" data-player="${ep.kinescope}" data-title="${title}">
+  return `<div class="player" data-player="${ep.kinescope}" data-title="${frameTitle}">
     <img src="${ep.poster}" alt="${title}" loading="lazy">${PMT.promotionBadge(ep)}
-    <button class="player__btn" type="button" aria-label="${U('openEpisode')}: ${title}">
+    <button class="player__btn" type="button" aria-label="${buttonLabel}: ${title}">
       <span class="player__disc">${PLAY}</span>
     </button>
   </div>`;
@@ -321,6 +323,20 @@ function epRow(p, ep) {
         ${ep.note ? `<p class="ep__note">${T(ep.note)}</p>` : ''}
       </div>
     </article>`;
+}
+
+function advertisementMarkup(p) {
+  const ad = p.advertisement;
+  return `
+    <section class="section wrap" id="advertisement">
+      <div class="statement">
+        <div>
+          <span class="label label--accent rise">${T(ad.n)}</span>
+          <h2 class="rise" data-d="100">${plain(T(ad.title))}</h2>
+        </div>
+      </div>
+      <div class="ptrailer rise" data-d="200">${playerMarkup(ad, 'Смотреть рекламный ролик')}</div>
+    </section>`;
 }
 
 /* ---------- страница проекта ---------- */
@@ -406,6 +422,10 @@ function mountProject() {
       </div>
     </section>`;
 
+  if (p.advertisement) {
+    const episodeSection = root.querySelector('#episodes');
+    if (episodeSection) episodeSection.insertAdjacentHTML('afterend', advertisementMarkup(p));
+  }
   root.querySelectorAll('[data-open]').forEach((b) => {
     b.addEventListener('click', () => openModal(b.dataset.open, b.dataset.eptitle));
   });

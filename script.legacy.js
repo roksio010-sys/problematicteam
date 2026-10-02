@@ -196,8 +196,10 @@ function closeModal() {
   modal.querySelector("[data-modal-stage]").innerHTML = "";
   PMT.toggleClass(document.documentElement, "is-locked", false);
 }
-function playerMarkup(ep) {
+function playerMarkup(ep, actionLabel) {
   var title = PMT.escape(plain(T(ep.title)));
+  var buttonLabel = PMT.escape(actionLabel || U("openEpisode"));
+  var frameTitle = actionLabel ? PMT.escape(actionLabel) + ": " + title : title;
   var poster = PMT.escape(PMT.legacy && ep.posterLegacy || ep.poster || "assets/compat/placeholder.png");
   var mp4 = PMT.safeMedia(ep.mp4), hls = PMT.safeMedia(ep.hls);
   var note = PMT.legacy ? '<div class="player__help"><p>' +
@@ -213,9 +215,9 @@ function playerMarkup(ep) {
     return '<div class="player player--empty"><img src="' + poster + '" alt=""><div class="player__soon"><span class="label">' +
       (ep.fallback ? U("playerMoved") : U("inProduction")) + '</span></div></div>' + (ep.fallback ? note : '');
   }
-  return '<div class="player-wrap"><div class="player" data-player="' + PMT.escape(ep.kinescope) + '" data-title="' + title + '">' +
+  return '<div class="player-wrap"><div class="player" data-player="' + PMT.escape(ep.kinescope) + '" data-title="' + frameTitle + '">' +
     '<img src="' + poster + '" alt="' + title + '" loading="lazy">' + PMT.promotionBadge(ep) + '<button class="player__btn" type="button" aria-label="' +
-    U("openEpisode") + ': ' + title + '"><span class="player__disc">' + PLAY + '</span></button></div>' + note + '</div>';
+    buttonLabel + ': ' + title + '"><span class="player__disc">' + PLAY + '</span></button></div>' + note + '</div>';
 }
 
 function wirePlayers(scope) {
@@ -233,6 +235,10 @@ function epRow(p, ep) {
   var t = plain(T(ep.title));
   var idx = p.episodes.indexOf(ep);
   return '\n    <article class="ep" '.concat(PMT.promotionAttrs(ep, idx), '>\n      <div class="ep__info">\n        <span class="num">').concat(T(ep.n), '</span>\n        <h3 class="ep__title">').concat(t || T(ep.n), "</h3>\n        ").concat(btn(U("openSeparately"), "watch.html?p=".concat(p.id, "&e=").concat(idx + 1), "bare"), '\n      </div>\n      <div class="ep__stage">\n        ').concat(playerMarkup(ep), "\n        ").concat(ep.note ? '<p class="ep__note">'.concat(T(ep.note), "</p>") : "", "\n      </div>\n    </article>");
+}
+function advertisementMarkup(p) {
+  var ad = p.advertisement;
+  return '\n    <section class="section wrap" id="advertisement">\n      <div class="statement">\n        <div>\n          <span class="label label--accent rise">'.concat(T(ad.n), '</span>\n          <h2 class="rise" data-d="100">').concat(plain(T(ad.title)), '</h2>\n        </div>\n      </div>\n      <div class="ptrailer rise" data-d="200">').concat(playerMarkup(ad, "Смотреть рекламный ролик"), '</div>\n    </section>');
 }
 function mountProject() {
   var root = document.querySelector("[data-project]");
@@ -260,6 +266,10 @@ function mountProject() {
   }).map(function(o, i) {
     return '\n          <a class="prow rise" data-d="'.concat(i * 50, '" ').concat(PMT.promotionAttrs(o, PROJECTS.indexOf(o)), ' href="project.html?p=').concat(o.id, '">\n            <span class="num prow__num">').concat(nn(PROJECTS.indexOf(o)), '</span>\n            <div class="prow__media"><div class="premiere-cover"><img src="').concat(o.poster, '" alt="').concat(plain(T(o.titlePlain)), '" loading="lazy">').concat(PMT.promotionBadge(o), '</div></div>\n            <div class="prow__body">\n              <span class="label label--accent">').concat(T(o.kind), "</span>\n              <h3>").concat(T(o.title), "</h3>\n            </div>\n          </a>");
   }).join(""), "\n      </div>\n    </section>");
+  if (p.advertisement) {
+    var episodeSection = root.querySelector("#episodes");
+    if (episodeSection) episodeSection.insertAdjacentHTML("afterend", advertisementMarkup(p));
+  }
   PMT.each(root.querySelectorAll("[data-open]"), function(b) {
     b.addEventListener("click", function() {
       return openModal(b.getAttribute("data-open"), b.getAttribute("data-eptitle"));

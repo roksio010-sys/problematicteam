@@ -10,7 +10,14 @@
   }
   function load(file, done) {
     var script = document.createElement('script'), finished = false;
-    script.src = file + '?v=' + (file === 'data.js' ? '20261002-bampi1' : '20260930-langfix1');
+    var versions = {
+      'data.js': '20261002-bampi3',
+      'site-config.js': '20260930-langfix1',
+      'visitor.js': '20260930-langfix1',
+      'script.js': '20261002-bampi3',
+      'script.legacy.js': '20261002-bampi3'
+    };
+    script.src = file + '?v=' + (versions[file] || '20261002-bampi3');
     script.async = false;
     script.onload = script.onreadystatechange = function () {
       if (!finished && (!script.readyState || /loaded|complete/.test(script.readyState))) {
