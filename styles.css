@@ -322,7 +322,7 @@ html.is-rush .rise{--d:0ms!important;transition-duration:100ms!important}
 /* ---------- адаптив ---------- */
 @media (max-width:1080px){
   .hero{grid-template-columns:1fr;min-height:auto}
-  .hero__text{min-height:100svh;padding-inline:var(--pad);justify-content:center;padding-bottom:10vh}
+  .hero__text{min-height:0;padding:calc(var(--head-total) + 6vh) var(--pad) 12vh;justify-content:flex-start}
   .hero__wall{display:none}
   .pj{grid-template-columns:1fr}
   .pj__media{position:relative;height:auto;aspect-ratio:16/10;max-height:46svh;background:var(--bg)}

@@ -12,8 +12,8 @@
     var script = document.createElement('script'), finished = false;
     var versions = {
       'data.js': '20261002-bampi3',
-      'site-config.js': '20260930-langfix1',
-      'visitor.js': '20260930-langfix1',
+      'site-config.js': '20261005-cdn1',
+      'visitor.js': '20261005-cdn1',
       'script.js': '20261002-bampi3',
       'script.legacy.js': '20261002-bampi3'
     };

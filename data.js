@@ -3,7 +3,6 @@ var VASYANICH_PREMIERE = {
   start: [2026, 9, 11],
   end: [2026, 9, 20]
 };
-var CDN = "https://static.tildacdn.ink/";
 var UI = {
   langTitle: { ru: "Выбери язык", ua: "Обери мову" },
   langNote: {
@@ -664,8 +663,8 @@ var PROJECTS_RU = [
       ru: "Не живи прошлым,<br>не меняй будущее,<br>будь в&nbsp;настоящем",
       ua: "Не живи минулим,<br>не змінюй майбутнє,<br>будь у&nbsp;теперішньому"
     },
-    poster: CDN + "tild3434-3139-4934-b562-303538366134/photo.jpg",
-    still: CDN + "tild3539-3463-4233-a338-626262356535/0804_16.gif",
+    poster: "assets/cdn/tild3434-3139-4934-b562-303538366134-photo.jpg",
+    still: "assets/cdn/tild3539-3463-4233-a338-626262356535-0804_16.gif",
     meta: [
       ["Жанр", "Фантастика, драма, антиутопия"],
       ["Страны", "Украина, Россия"],
@@ -690,7 +689,7 @@ var PROJECTS_RU = [
         n: "1 эпизод",
         title: "ГДЕ Я?",
         kinescope: "jceX6k2qsjKG6pgEjK1Bft",
-        poster: CDN + "tild3435-3466-4336-b333-386263653263/photo_2025-08-04_20-.jpg",
+        poster: "assets/cdn/tild3435-3466-4336-b333-386263653263-photo_2025-08-04_20-.jpg",
         credits: {
           "Актёры озвучки": [["Вася", "Васянич"], ["Мини Бот", "Кирилл"], ["Бот-полицейский", "SadowHell"]],
           "Режиссёр и монтаж": [["Васянич", ""]]
@@ -700,7 +699,7 @@ var PROJECTS_RU = [
         n: "2 эпизод",
         title: "НОВЫЙ ДОМ",
         kinescope: "4DdtpW95rqm5CkzaAE19bs",
-        poster: CDN + "tild3436-6566-4438-b966-303665366232/_2.jpg",
+        poster: "assets/cdn/tild3436-6566-4438-b966-303665366232-_2.jpg",
         credits: {
           "Актёры озвучки": [["Вася", "Васянич"], ["Слайд", "Артемий Прудников"], ["Мия", "Куби"], ["Эльд", "Герман Мюллер"], ["Александр", "SadowHell"]],
           "Режиссёр и монтаж": [["Васянич", ""]]
@@ -710,14 +709,14 @@ var PROJECTS_RU = [
         n: "3 эпизод",
         title: "В ПРОИЗВОДСТВЕ",
         kinescope: "",
-        poster: CDN + "tild3962-6439-4630-b434-373965386139/free-3d-question-mar.jpg",
+        poster: "assets/cdn/tild3962-6439-4630-b434-373965386139-free-3d-question-mar.jpg",
         credits: {}
       },
       {
         n: "4 эпизод",
         title: "В ПРОИЗВОДСТВЕ",
         kinescope: "",
-        poster: CDN + "tild3962-6439-4630-b434-373965386139/free-3d-question-mar.jpg",
+        poster: "assets/cdn/tild3962-6439-4630-b434-373965386139-free-3d-question-mar.jpg",
         credits: {}
       }
     ]
@@ -736,8 +735,8 @@ var PROJECTS_RU = [
       ru: "Гамбол,<br>каким мы его<br>придумали сами",
       ua: "Гамбол,<br>яким ми його<br>придумали самі"
     },
-    poster: CDN + "tild3461-3966-4562-a434-366636663336/_1807_20250804200043.png",
-    still: CDN + "tild6139-3032-4464-b330-373733643164/maxresdefault_9.jpg",
+    poster: "assets/cdn/tild3461-3966-4562-a434-366636663336-_1807_20250804200043.png",
+    still: "assets/cdn/tild6139-3032-4464-b330-373733643164-maxresdefault_9.jpg",
     meta: [
       ["Жанр", "Ситком, комедия"],
       ["Озвучка", "Problematic Team"],
@@ -752,21 +751,21 @@ var PROJECTS_RU = [
         n: "1 эпизод",
         title: "НАЧАЛО КОНЦА",
         kinescope: "pPdYS35yMZf3EnUuJrLvPh",
-        poster: CDN + "tild3536-3835-4266-b538-373737616339/maxresdefault_51.jpg",
+        poster: "assets/cdn/tild3536-3835-4266-b538-373737616339-maxresdefault_51.jpg",
         credits: null
       },
       {
         n: "2 эпизод",
         title: "ПЕЧЕНЬЕ С ПРЕДСКАЗАНИЯМИ",
         kinescope: "jqZiB5CxQUj7DmE6SecpKC",
-        poster: CDN + "tild3532-6534-4935-a363-666366613461/photo_2025-08-04_23-.jpg",
+        poster: "assets/cdn/tild3532-6534-4935-a363-666366613461-photo_2025-08-04_23-.jpg",
         credits: null
       },
       {
         n: "3 эпизод",
         title: "ДОМЕН",
         kinescope: "sgfUtSuTYEXtyfKJGzYtjt",
-        poster: CDN + "tild3536-3735-4531-a530-643534393435/photo_2025-08-04_23-.jpg",
+        poster: "assets/cdn/tild3536-3735-4531-a530-643534393435-photo_2025-08-04_23-.jpg",
         credits: null
       },
       {
@@ -792,8 +791,8 @@ var PROJECTS_RU = [
       ru: "Гамбол<br>в озвучке<br>PMT",
       ua: "Гамбол<br>в озвученні<br>PMT"
     },
-    poster: CDN + "tild3937-6539-4336-b464-623966326635/_1799_20250730105154.png",
-    still: CDN + "tild6361-3064-4637-b366-653236616530/photo.jpg",
+    poster: "assets/cdn/tild3937-6539-4336-b464-623966326635-_1799_20250730105154.png",
+    still: "assets/cdn/tild6361-3064-4637-b366-653236616530-photo.jpg",
     meta: [
       ["Жанр", "Ситком, комедия"],
       ["Озвучка", "Problematic Team"],
@@ -831,7 +830,7 @@ var PROJECTS_RU = [
         title: "БУРГЕР",
         kinescope: "9r7MhSXGS6E1SBD9KpxBye",
         fallback: "https://problematicteamplay.tilda.ws/",
-        poster: CDN + "tild3336-6163-4066-b032-303834636366/screen0003.png",
+        poster: "assets/cdn/tild3336-6163-4066-b032-303834636366-screen0003.png",
         credits: {
           "Актёры озвучки": [["Гамбол", "Velichko"], ["Дарвин", "Кирилл"], ["Ларри", "Мисс Симиан"], ["Мистер Смолл", "Васянич"], ["Мисс Симиан", "Мисс Симиан"], ["Бургер", "Артур"], ["Ричард", "Артур"]],
           "Переводчик": [["Кирилл", ""]],
@@ -843,7 +842,7 @@ var PROJECTS_RU = [
         title: "АССИСТЕНТ",
         kinescope: "9916kZnRf9FdFZCNEKV2Uh",
         fallback: "https://problematicteamplay.tilda.ws/seria2",
-        poster: CDN + "tild3431-3537-4431-b161-303232656531/07315.png",
+        poster: "assets/cdn/tild3431-3537-4431-b161-303232656531-07315.png",
         credits: {
           "Актёры озвучки": [["Гамбол", "Velichko"], ["Дарвин", "Кирилл"], ["Николь", "Мисс Эл"], ["Анаис", "Костя"], ["Ари", "Жигулист"], ["Ассистенты", "Герман старший"], ["Ричард", "Артур"], ["Роботы-пылесосы", "Кирилл"]],
           "Переводчик": [["Мисс Симиан", ""]],
@@ -855,7 +854,7 @@ var PROJECTS_RU = [
         title: "ДИСТАНЦИЯ",
         kinescope: "xfgcSKd9LevPpgsEfP67VB",
         fallback: "https://problematicteamplay.tilda.ws/seria3",
-        poster: CDN + "tild6631-3966-4632-b735-303431643964/Gw6w6qfW0AAWw-b.jpeg",
+        poster: "assets/cdn/tild6631-3966-4632-b735-303431643964-Gw6w6qfW0AAWw-b.jpeg",
         credits: {
           "Актёры озвучки": [["Гамбол", "Velichko"], ["Дарвин", "Кирилл"], ["Николь", "Мисс Эл"], ["Анаис", "Костя"]],
           "Монтажёр": [["Кирилл", ""]]
@@ -866,7 +865,7 @@ var PROJECTS_RU = [
         title: "ВЕЩЬ",
         kinescope: "ev6xesmxkB1kBtADizrZ2q",
         fallback: "https://problematicteamplay.tilda.ws/seria4",
-        poster: CDN + "tild6366-3237-4163-a237-326564306236/Gw61UTtbcAA_hGn.jpeg",
+        poster: "assets/cdn/tild6366-3237-4163-a237-326564306236-Gw61UTtbcAA_hGn.jpeg",
         credits: {
           "Актёры озвучки": [["Гамбол", "Velichko"], ["Дарвин", "Кирилл"], ["Николь", "Мисс Эл"], ["Анаис", "Костя"]],
           "Монтажёр": [["Кирилл", ""]]
@@ -888,8 +887,8 @@ var PROJECTS_RU = [
       ru: "Дубляж финальной<br>арки сериала<br>от команды PMT",
       ua: "Дубляж фінальної<br>арки серіалу<br>від команди PMT"
     },
-    poster: CDN + "tild6132-6663-4238-b064-326461393531/_938_20250804235242.png",
-    still: CDN + "tild3039-3234-4539-b535-643337376235/EWLlogo.png",
+    poster: "assets/cdn/tild6132-6663-4238-b064-326461393531-_938_20250804235242.png",
+    still: "assets/cdn/tild3039-3234-4539-b535-643337376235-EWLlogo.png",
     meta: [
       ["Жанр", "Комедия, приключения, флэш-анимация"],
       ["Автор", "Эдд Гулд"],
@@ -913,7 +912,7 @@ var PROJECTS_RU = [
         n: "Часть 1",
         title: "КОНЕЦ",
         kinescope: "7YnHc4MdBgcRKcjBWsVpBq",
-        poster: CDN + "tild6336-3364-4738-b030-663632373266/photo_2025-08-04_15-.jpg",
+        poster: "assets/cdn/tild6336-3364-4738-b030-663632373266-photo_2025-08-04_15-.jpg",
         credits: {
           "Актёры озвучки": [["Эдд", "Васянич"], ["Том", "SadowHell"], ["Мэтт", "MilAri"], ["Торд", "GLEB4IK"], ["Эдуардо", "Fedya Metals"], ["Джон", "Васянич"]],
           "Переводчики": [["Кирилл", ""], ["Васянич", ""]],
@@ -936,8 +935,8 @@ var PROJECTS_RU = [
       ru: "Отдельная серия<br>вне основного<br>дубляжа",
       ua: "Окрема серія<br>поза основним<br>дубляжем"
     },
-    poster: CDN + "tild3565-6165-4531-b439-663537303866/InShot_20251004_1045.jpg",
-    still: CDN + "tild3336-6163-4066-b032-303834636366/screen0003.png",
+    poster: "assets/cdn/tild3565-6165-4531-b439-663537303866-InShot_20251004_1045.jpg",
+    still: "assets/cdn/tild3336-6163-4066-b032-303834636366-screen0003.png",
     meta: [
       ["Жанр", "Ситком, комедия"],
       ["Озвучка", "Problematic Team"],
@@ -961,7 +960,7 @@ var PROJECTS_RU = [
         n: "Серия",
         title: "ОСНОВЫ",
         kinescope: "9ZZk1EChUff8hPbyQ4ag6L",
-        poster: CDN + "tild3565-6165-4531-b439-663537303866/InShot_20251004_1045.jpg",
+        poster: "assets/cdn/tild3565-6165-4531-b439-663537303866-InShot_20251004_1045.jpg",
         credits: null
       }
     ]
@@ -980,8 +979,8 @@ var POSTER = {
   vasyanich: "assets/posters/vasyanich.png",
   fanGumballUa: "assets/posters/fan-gumball-ua.png",
   stfUa: "assets/posters/savethefuture-ua.jpg",
-  stf: CDN + "tild3434-3139-4934-b562-303538366134/photo.jpg",
-  none: CDN + "tild3962-6439-4630-b434-373965386139/free-3d-question-mar.jpg"
+  stf: "assets/cdn/tild3434-3139-4934-b562-303538366134-photo.jpg",
+  none: "assets/cdn/tild3962-6439-4630-b434-373965386139-free-3d-question-mar.jpg"
 };
 var kposter = function(id) {
   return "https://kinescope.io/".concat(id, "/poster/lg.jpg");
