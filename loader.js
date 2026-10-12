@@ -11,7 +11,7 @@
   function load(file, done) {
     var script = document.createElement('script'), finished = false;
     var versions = {
-      'data.js': '20261002-bampi3',
+      'data.js': '20261012-zhigulist',
       'site-config.js': '20261005-cdn1',
       'visitor.js': '20261005-cdn1',
       'script.js': '20261002-bampi3',
